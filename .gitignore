@@ -1,0 +1,25 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated exports and build artifacts
+output/
+build/
+dist/
+*.egg-info/
+
+# Local tool settings and secrets
+.claude/
+.codex/
+.env
+.env.*
+!.env.example
+
+# Operating system files
+Thumbs.db
+.DS_Store

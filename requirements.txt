@@ -1,0 +1,7 @@
+Pillow>=10.0
+numpy>=1.24
+sounddevice>=0.4
+soundfile>=0.12
+pydub>=0.25
+customtkinter>=5.2
+svgwrite>=1.4
