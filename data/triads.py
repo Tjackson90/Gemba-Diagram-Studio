@@ -6,7 +6,7 @@ Also provides diatonic harmonization for major, natural minor, harmonic minor,
 and melodic minor keys.
 
 Voicing derivations (offsets are relative to root_fret on root_string):
-  - Negative offsets wrap via +12 when the computed fret would be < 0.
+  - The entire shape moves up an octave when any computed fret would be < 0.
   - Strings listed low-to-high (0 = low E, 5 = high e).
 """
 
@@ -149,7 +149,7 @@ def _compute_triad_frets(root_semi, quality, voicing_name):
     Compute the 6-element frets list for one triad voicing.
 
     Strings not in the voicing are set to -1 (muted).
-    Negative computed frets are shifted up by 12 (next octave).
+    The entire shape shifts up an octave when any fret would be negative.
     """
     tmpl = TRIAD_TEMPLATES[voicing_name]
     strings = tmpl["strings"]
@@ -158,13 +158,13 @@ def _compute_triad_frets(root_semi, quality, voicing_name):
 
     root_fret = (root_semi - _OPEN_SEMI[root_string]) % 12
 
+    if root_fret + min(offsets) < 0:
+        root_fret += 12
     frets = [-1] * 6
     for i, s in enumerate(strings):
-        f = root_fret + offsets[i]
-        if f < 0:
-            f += 12
-        frets[s] = f
-    return frets
+        frets[s] = root_fret + offsets[i]
+    from data.instrument import adapt_voicing
+    return adapt_voicing(frets, [0]*6)[0]
 
 
 def _assign_fingers(strings, frets):
@@ -383,6 +383,7 @@ def get_triad_voicing(root_name, quality, voicing_name):
 
     suffix = _QUALITY_SUFFIX.get(quality, "")
     root_fret = (root_semi - _OPEN_SEMI[tmpl["root_string"]]) % 12
+    root_fret = frets[tmpl["root_string"]]
     label = f"{voicing_name} (fret {root_fret})"
 
     return {

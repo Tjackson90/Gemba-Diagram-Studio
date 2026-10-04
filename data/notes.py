@@ -30,7 +30,10 @@ def midi_to_freq(midi_note):
 
 def note_name_to_semitone(name):
     """Convert note name (e.g., 'C', 'F#', 'Bb') to semitone index 0-11."""
-    name = name.strip()
+    name = name.strip().replace('♯', '#').replace('♭', 'b')
+    if name and name[0].upper() in 'ABCDEFG' and all(c in '#b' for c in name[1:]):
+        natural = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
+        return (natural[name[0].upper()] + name[1:].count('#') - name[1:].count('b')) % 12
     # Try sharp names first
     if name in SHARP_NAMES:
         return SHARP_NAMES.index(name)
@@ -49,7 +52,7 @@ def semitone_to_name(semitone, prefer_flat=False):
 # ── Fretboard Helpers ──────────────────────────────────────
 def fret_to_midi(string_idx, fret):
     """Get MIDI note number for a string index (0=low E) and fret."""
-    return STANDARD_TUNING_MIDI[string_idx] + fret
+    return get_tuning()[string_idx] + fret
 
 def fret_to_note_name(string_idx, fret, prefer_flat=False):
     """Get note name for a string index and fret."""
@@ -92,7 +95,7 @@ def get_scale_notes(root_semitone, intervals):
 
 # ── Note Names for Specific Roots ─────────────────────────
 # Some roots prefer flats in their scale/chord spelling
-FLAT_ROOTS = {1, 3, 6, 8, 10}  # Db, Eb, Gb, Ab, Bb
+FLAT_ROOTS = {1, 3, 5, 6, 8, 10}  # Db, Eb, F, Gb, Ab, Bb
 
 def note_display_name(semitone, root_semitone=0):
     """
@@ -106,3 +109,24 @@ ROOT_NAMES = [
     "C", "C#/Db", "D", "D#/Eb", "E", "F",
     "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"
 ]
+
+
+def spell_intervals(root, intervals, degrees=None):
+    """Preserve diatonic letter names independently of sounding pitch classes."""
+    root = root.split('/')[0].replace('♯', '#').replace('♭', 'b')
+    semi = note_name_to_semitone(root)
+    letters = 'CDEFGAB'
+    natural = [0, 2, 4, 5, 7, 9, 11]
+    if degrees is None and len(intervals) == 7:
+        degrees = range(7)
+    if degrees is None:
+        return [semitone_to_name(semi+iv, 'b' in root or semi in FLAT_ROOTS) for iv in intervals]
+    start = letters.index(root[0].upper())
+    result = []
+    for iv, degree in zip(intervals, degrees):
+        index = (start + degree) % 7
+        accidental = (semi + iv - natural[index] + 6) % 12 - 6
+        result.append(letters[index] + ('#' * accidental if accidental >= 0 else 'b' * -accidental))
+    return result
+
+from data.instrument import get_tuning, string_names, string_column

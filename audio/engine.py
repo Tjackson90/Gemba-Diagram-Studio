@@ -10,6 +10,9 @@ All three are used automatically when present and fall back to the
 pure-numpy implementations if they are ever unavailable.
 """
 
+from contextlib import contextmanager
+from contextvars import ContextVar
+from data.timeline import scale_events, chord_events
 import numpy as np
 from pathlib import Path
 import config
@@ -47,9 +50,19 @@ except ImportError:
 
 # ── Parameter helpers ─────────────────────────────────────────────────────────
 
+_JOB_TONE = ContextVar('job_tone', default=None)
+
+@contextmanager
+def tone_settings(settings):
+    token = _JOB_TONE.set(dict(settings))
+    try:
+        yield
+    finally:
+        _JOB_TONE.reset(token)
+
+
 def _ts(key, default=0.5):
-    """Read a TONE_SETTINGS value, clipped 0–1."""
-    return float(np.clip(TONE_SETTINGS.get(key, default), 0.0, 1.0))
+    return float(np.clip((_JOB_TONE.get() or TONE_SETTINGS).get(key, default), 0., 1.))
 
 
 # ── Core DSP helpers ──────────────────────────────────────────────────────────
@@ -762,128 +775,24 @@ def generate_chord_audio(
         strum_delay_ms: ms between strings in a strum
         arpeggio_delay_ms: ms between strings in arpeggio mode
     """
-    gen = TONE_GENERATORS.get(tone, generate_acoustic)
-    sr  = SAMPLE_RATE
-
-    string_order = list(range(6))
-    if strum_direction == "up":
-        string_order = list(reversed(string_order))
-
-    played = [(i, frets[i]) for i in string_order if frets[i] >= 0]
-
-    if play_style == "arpeggio":
-        delay_samp  = int(arpeggio_delay_ms * sr / 1000)
-        total       = len(played) * delay_samp + int(sr * duration)
-        mix         = np.zeros(total)
-        for idx, (i, f) in enumerate(played):
-            note   = gen(midi_to_freq(STANDARD_TUNING_MIDI[i] + f), duration=duration, sr=sr)
-            offset = idx * delay_samp
-            end    = min(offset + len(note), total)
-            mix[offset:end] += note[:end - offset]
-
-    elif play_style == "arpeggio_strum":
-        delay_samp  = int(arpeggio_delay_ms * sr / 1000)
-        strum_samp  = int(strum_delay_ms    * sr / 1000)
-        gap_samp    = int(0.50 * sr)
-        last_start  = (len(played) - 1) * delay_samp
-        arp_end     = last_start + int(sr * duration) + gap_samp
-        total       = arp_end + int(sr * duration) + strum_samp * 5
-        mix         = np.zeros(total)
-
-        for idx, (i, f) in enumerate(played):
-            note   = gen(midi_to_freq(STANDARD_TUNING_MIDI[i] + f), duration=duration, sr=sr)
-            offset = idx * delay_samp
-            end    = min(offset + len(note), total)
-            mix[offset:end] += note[:end - offset]
-
-        for si, (i, f) in enumerate(played):
-            nd   = max(duration - strum_delay_ms * si / 1000, 0.1)
-            note = gen(midi_to_freq(STANDARD_TUNING_MIDI[i] + f), duration=nd, sr=sr)
-            offset = arp_end + si * strum_samp
-            end    = min(offset + len(note), total)
-            mix[offset:end] += note[:end - offset]
-
-    else:  # strum
-        strum_samp = int(strum_delay_ms * sr / 1000)
-        total      = int(sr * duration) + strum_samp * 5
-        mix        = np.zeros(total)
-        for si, (i, f) in enumerate(played):
-            nd   = duration - strum_delay_ms * si / 1000
-            note = gen(midi_to_freq(STANDARD_TUNING_MIDI[i] + f), duration=nd, sr=sr)
-            offset = si * strum_samp
-            end    = min(offset + len(note), total)
-            mix[offset:end] += note[:end - offset]
-
-    return _master_chain(mix, sr)
+    events = chord_events(frets, duration, play_style, strum_direction,
+                          strum_delay_ms, arpeggio_delay_ms)
+    return render_events(events, tone)
 
 
-def generate_scale_audio(
-    notes_data,
-    tone="Acoustic",
-    note_duration_ms=300,
-    ascending=True,
-    descending=False,
-    root_to_root=True,
-    stop_at_high_e_root=False,
-):
-    """Generate audio for scale or arpeggio playback."""
-    gen = TONE_GENERATORS.get(tone, generate_acoustic)
-    sr  = SAMPLE_RATE
-    note_samp = int(note_duration_ms * sr / 1000)
+def render_events(events, tone="Acoustic", tail=.5):
+    from audio.sampler import render
+    settings = _JOB_TONE.get()
+    return render(events, tone, SAMPLE_RATE, settings if settings is not None else TONE_SETTINGS, tail)
 
-    all_midi = sorted(set(
-        STANDARD_TUNING_MIDI[n["string"]] + n["fret"]
-        for n in notes_data
-    ))
-    if not all_midi:
-        return np.zeros(sr)
 
-    if root_to_root:
-        root_midis = sorted(set(
-            STANDARD_TUNING_MIDI[n["string"]] + n["fret"]
-            for n in notes_data if n.get("is_root", False)
-        ))
-        start_midi = root_midis[0] if root_midis else all_midi[0]
-        end_midi   = root_midis[-1] if root_midis else all_midi[-1]
-
-        if stop_at_high_e_root:
-            he_roots = sorted(
-                STANDARD_TUNING_MIDI[n["string"]] + n["fret"]
-                for n in notes_data
-                if n.get("is_root", False) and n["string"] == 5
-            )
-            if he_roots:
-                end_midi = he_roots[0]
-
-        asc = [m for m in all_midi if start_midi <= m <= end_midi] or all_midi
-        seq = []
-        if ascending:
-            seq.extend(asc)
-        if descending:
-            desc = list(reversed(asc[:-1] if ascending else asc))
-            seq.extend(desc)
-            if seq[-1] != start_midi:
-                seq.append(start_midi)
-    else:
-        seq = []
-        if ascending:
-            seq.extend(all_midi)
-        if descending:
-            seq.extend(reversed(all_midi[:-1] if ascending else all_midi))
-
-    if not seq:
-        return np.zeros(sr)
-
-    total = len(seq) * note_samp + int(sr * 0.5)
-    mix   = np.zeros(total)
-    for i, midi in enumerate(seq):
-        dur  = note_duration_ms / 1000 * 1.5
-        note = gen(midi_to_freq(midi), duration=dur, sr=sr)
-        off  = i * note_samp
-        end  = min(off + len(note), total)
-        mix[off:end] += note[:end - off]
-
-    return _master_chain(mix, sr)
+def generate_scale_audio(notes_data, tone="Acoustic", note_duration_ms=300,
+                         ascending=True, descending=False, root_to_root=True,
+                         stop_at_high_e_root=False):
+    events = scale_events(notes_data, note_duration_ms, ascending=ascending,
+                          descending=descending, root_to_root=root_to_root,
+                          stop_at_high_e_root=stop_at_high_e_root)
+    return render_events(events, tone)
 
 
 # ── Progression Audio ─────────────────────────────────────────────────────────
@@ -921,16 +830,16 @@ def generate_progression_audio(
             strum_direction=direction,
         )
         if len(seg) < chord_samp:
-            seg = np.concatenate([seg, np.zeros(chord_samp - len(seg))])
+            seg = np.concatenate([seg, np.zeros((chord_samp - len(seg), 2))])
         else:
             # Fade out over last 30 ms before the hard cut to prevent click
             seg = seg[:chord_samp]
             fade_samp = min(int(0.030 * sr), chord_samp // 4)
             if fade_samp > 0:
-                seg[-fade_samp:] *= 0.5 * (1.0 + np.cos(np.linspace(0, np.pi, fade_samp)))
+                seg[-fade_samp:] *= (0.5 * (1.0 + np.cos(np.linspace(0, np.pi, fade_samp))))[:, None]
         segments.append(seg)
 
-    tail = np.zeros(int(sr * 1.0))
+    tail = np.zeros((int(sr * 1.0), 2))
     full = np.concatenate(segments + [tail])
 
     peak = np.max(np.abs(full))
@@ -949,9 +858,9 @@ def play_audio(audio_data, sr=SAMPLE_RATE, volume=1.0):
         sd.play(scaled, sr)
         sd.wait()
     except ImportError:
-        print("Warning: sounddevice not installed. Cannot play audio.")
+        raise RuntimeError("Install sounddevice to play audio")
     except Exception as e:
-        print(f"Audio playback error: {e}")
+        raise RuntimeError(f"Audio playback error: {e}") from e
 
 
 def stop_audio():
@@ -974,7 +883,7 @@ def _wav_fallback(audio_data, output_path, sr=SAMPLE_RATE):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pcm = (np.clip(audio_data, -1.0, 1.0) * 32767).astype(np.int16)
     with wave.open(str(output_path), "w") as wf:
-        wf.setnchannels(1)
+        wf.setnchannels(1 if pcm.ndim == 1 else pcm.shape[1])
         wf.setsampwidth(2)
         wf.setframerate(sr)
         wf.writeframes(pcm.tobytes())
@@ -991,34 +900,31 @@ def export_wav(audio_data, output_path, sr=SAMPLE_RATE):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         import soundfile as sf
-        sf.write(str(output_path), audio_data.astype(np.float32), sr)
+        sf.write(str(output_path), audio_data.astype(np.float32), sr, subtype="FLOAT")
+        from audio.sampler import write_credit
+        write_credit(output_path)
         return output_path
     except ImportError:
         return _wav_fallback(audio_data, output_path, sr)
 
 
 def export_mp3(audio_data, output_path, sr=SAMPLE_RATE):
-    """Export audio as MP3. Requires pydub + ffmpeg."""
-    try:
-        from pydub import AudioSegment
-        import io, wave
-
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        buf = io.BytesIO()
-        pcm = (np.clip(audio_data, -1.0, 1.0) * 32767).astype(np.int16)
-        with wave.open(buf, "w") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(SAMPLE_RATE)
-            wf.writeframes(pcm.tobytes())
-        buf.seek(0)
-        AudioSegment.from_wav(buf).export(str(output_path), format="mp3", bitrate="192k")
-        return output_path
-    except ImportError:
-        print("Warning: pydub not installed. Cannot export MP3.")
-        return None
-    except Exception as e:
-        print(f"MP3 export error: {e}")
-        return None
+    """Encode MP3 with the same FFmpeg executable used for video."""
+    import subprocess
+    import tempfile
+    from diagrams.video_export import _find_ffmpeg
+    ffmpeg = _find_ffmpeg()
+    if not ffmpeg:
+        raise RuntimeError("FFmpeg is required for MP3 export; install it or add it to PATH")
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as directory:
+        wav = export_wav(audio_data, Path(directory) / "audio.wav", sr)
+        result = subprocess.run([ffmpeg, '-y', '-i', str(wav), '-b:a', '192k', str(output_path)],
+                                capture_output=True, text=True, timeout=300,
+                                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        if result.returncode:
+            raise RuntimeError(result.stderr[-4000:])
+    from audio.sampler import write_credit
+    write_credit(output_path)
+    return output_path

@@ -102,8 +102,8 @@ def get_degree_chord(root_name, mode, degree_idx):
     degree_semi = (root_semi + scale[degree_idx]) % 12
     quality = qualities[degree_idx]
 
-    prefer_flat = root_semi in {1, 3, 6, 8, 10}
-    chord_root = FLAT_NAMES[degree_semi] if prefer_flat else SHARP_NAMES[degree_semi]
+    from data.notes import spell_intervals
+    chord_root = spell_intervals(root_name, scale)[degree_idx]
     return chord_root, quality
 
 
@@ -284,6 +284,8 @@ def parse_roman(roman_str, mode):
     parts = roman_str.replace(",", "-").replace(" ", "-").split("-")
     parts = [p.strip() for p in parts if p.strip()]
 
+    if len(parts) > 16:
+        raise ValueError("A progression can contain at most 16 chords")
     indices = []
     for p in parts:
         pl = p.lower().rstrip("°").rstrip("o")

@@ -23,10 +23,24 @@ sys.path.insert(0, str(Path(__file__).parent))
 from cli.commands import main as cli_main
 
 
-if __name__ == "__main__":
+def main():
+    from services.diagnostics import setup_logging
+    setup_logging()
+    if sys.argv[1:] == ["--smoke-test"]:
+        from gui.qt_app import run
+        run(smoke=True)
+        return
+    if sys.argv[1:] == ["--legacy-ui"]:
+        from gui.app import run
+        run()
+        return
     # If no arguments, launch GUI
     if len(sys.argv) == 1:
-        from gui.app import run
+        from gui.qt_app import run
         run()
     else:
         cli_main()
+
+
+if __name__ == "__main__":
+    main()

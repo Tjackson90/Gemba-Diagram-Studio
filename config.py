@@ -8,7 +8,14 @@ from pathlib import Path
 # ── Project Paths ──────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).parent
 FONT_DIR = PROJECT_ROOT / "fonts"
-OUTPUT_DIR = PROJECT_ROOT / "output"
+DATA_DIR = Path(os.environ.get("GEMBA_DATA_DIR", str(Path(os.environ.get("LOCALAPPDATA", Path.home() / ".local/share")) / "GembaGuitarStudio")))
+OUTPUT_DIR = Path(os.environ.get("GEMBA_OUTPUT_DIR", str(Path.home() / "Documents" / "GembaGuitar Exports")))
+MAX_IMAGE_PIXELS = 20000000
+
+def validate_size(width, height):
+    if not isinstance(width, int) or not isinstance(height, int) or min(width, height) < 64 or width * height > MAX_IMAGE_PIXELS:
+        raise ValueError("Image dimensions must be at least 64 pixels and at most 20 megapixels")
+    return width, height
 
 # ── Brand Colors (RGB tuples) ──────────────────────────────
 NAVY_DEEP = (11, 30, 61)        # #0b1e3d
@@ -51,6 +58,8 @@ FONT_BODY_BOLD = "DMSans-Bold.ttf"
 
 def get_font_path(font_file):
     """Get full path to a font file, with fallback info."""
+    if font_file in (FONT_BODY, FONT_BODY_BOLD):
+        font_file = "DMSans-VariableFont_opsz,wght.ttf"
     path = FONT_DIR / font_file
     if path.exists():
         return str(path)
@@ -60,6 +69,8 @@ def get_font_path(font_file):
 RESOLUTIONS = {
     "1080p": (1920, 1080),
     "4K": (3840, 2160),
+    "Shorts": (1080, 1920),
+    "Print A4": (2480, 3508),
     "Square": (1080, 1080),
     "Square 4K": (2160, 2160),
 }

@@ -11,34 +11,32 @@ works with them automatically.
 import json
 import config
 
-CUSTOM_FILE = config.PROJECT_ROOT / "custom_library.json"
+from services.storage import read_json, write_json
+
+CUSTOM_FILE = config.DATA_DIR / "custom_library.json"
 
 # ── Prefix used to mark custom entries (prevents collision with built-ins) ──
 CUSTOM_PREFIX = "★ "
 
 
-def load_raw() -> dict:
-    """Return the raw dict from disk: {scales: {...}, arpeggios: {...}}"""
-    if CUSTOM_FILE.exists():
-        try:
-            with open(CUSTOM_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                data.setdefault("scales", {})
-                data.setdefault("arpeggios", {})
-                return data
-        except Exception:
-            pass
-    return {"scales": {}, "arpeggios": {}}
+def _validate_library(data):
+    if not isinstance(data, dict) or set(data) != {'scales', 'arpeggios'}:
+        raise ValueError('Library must contain scales and arpeggios dictionaries')
+    for entries in data.values():
+        if not isinstance(entries, dict):
+            raise ValueError('Library entries must be dictionaries')
+        for name, intervals in entries.items():
+            _validate(name, intervals)
 
 
-def _save_raw(data: dict):
-    """Write the raw dict to disk."""
-    with open(CUSTOM_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+def load_raw():
+    source = CUSTOM_FILE if CUSTOM_FILE.exists() else config.PROJECT_ROOT / 'custom_library.json'
+    return read_json(source, {'scales': {}, 'arpeggios': {}}, _validate_library)
 
 
-# ── Runtime patching ────────────────────────────────────────────────────────
+def _save_raw(data):
+    write_json(CUSTOM_FILE, data, _validate_library)
+
 
 def load_into_scale_dicts(scale_intervals: dict, scale_names: list):
     """
@@ -135,12 +133,12 @@ def delete_custom_arpeggio(display_name: str,
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 def _validate(name: str, intervals: list):
-    if not name or not name.strip():
+    if not isinstance(name, str) or not name.strip() or len(name) > 100:
         raise ValueError("Name cannot be empty.")
     if not isinstance(intervals, list) or len(intervals) < 2:
         raise ValueError("An interval set needs at least 2 notes.")
     for iv in intervals:
-        if not isinstance(iv, int) or not (0 <= iv <= 11):
+        if type(iv) is not int or not (0 <= iv <= 11):
             raise ValueError(f"Each interval must be an integer 0-11. Got: {iv!r}")
     if intervals[0] != 0:
         raise ValueError("First interval must be 0 (the root).")
@@ -160,7 +158,9 @@ def parse_interval_string(raw: str) -> list:
         nums = [int(p) for p in parts]
     except ValueError:
         raise ValueError("Intervals must be integers separated by commas.")
-    nums = sorted(set(nums))
+    if len(set(nums)) != len(nums):
+        raise ValueError("Intervals must be unique")
+    nums = sorted(nums)
     return nums
 
 

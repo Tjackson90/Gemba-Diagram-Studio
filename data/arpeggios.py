@@ -46,8 +46,9 @@ ARPEGGIO_NAMES = list(ARPEGGIO_INTERVALS.keys())
 try:
     from data.custom_library import load_into_arpeggio_dicts as _load_custom
     _load_custom(ARPEGGIO_INTERVALS, ARPEGGIO_NAMES)
-except Exception:
-    pass
+except (ValueError, OSError) as exc:
+    import warnings
+    warnings.warn(f"Custom library was not loaded: {exc}", RuntimeWarning)
 
 
 def get_arpeggio_notes_set(root_semitone, arpeggio_name):
@@ -72,14 +73,19 @@ def get_full_fretboard_arpeggio(root_name, arpeggio_name, num_frets=15):
         return []
 
     prefer_flat = root_semi in {1, 3, 6, 8, 10}
+    from data.notes import spell_intervals
+    intervals = ARPEGGIO_INTERVALS[arpeggio_name]
+    degree_map = {0:0, 2:1, 3:2, 4:2, 5:3, 6:4, 7:4, 8:4, 9:6, 10:6, 11:6}
+    degrees = [degree_map[i] for i in intervals] if all(i in degree_map for i in intervals) else None
+    labels = dict(zip(intervals, spell_intervals(root_name, intervals, degrees)))
     result = []
     for string_idx in range(6):
-        open_midi = STANDARD_TUNING_MIDI[string_idx]
+        open_midi = get_tuning()[string_idx]
         for fret in range(num_frets + 1):
             midi = open_midi + fret
             semi = midi % 12
             if semi in arp_notes:
-                name = FLAT_NAMES[semi] if prefer_flat else SHARP_NAMES[semi]
+                name = labels[(semi-root_semi)%12]
                 result.append({
                     "string": string_idx,
                     "fret": fret,
@@ -91,65 +97,9 @@ def get_full_fretboard_arpeggio(root_name, arpeggio_name, num_frets=15):
 
 
 def get_arpeggio_positions(root_name, arpeggio_name, num_frets=15):
-    """
-    Generate 5 CAGED box positions for an arpeggio.
-
-    Uses the same standard CAGED spacing as scale positions: five box windows
-    start at semitone offsets [0, 2, 5, 7, 10] above the root fret on the low
-    E string, each covering a strict 4-fret window.
-
-    Returns list of dicts:
-        {position_num, start_fret, end_fret, notes}
-    """
-    if "/" in root_name:
-        root_name = root_name.split("/")[0]
-    root_semi = note_name_to_semitone(root_name)
-
-    intervals = ARPEGGIO_INTERVALS.get(arpeggio_name, [])
-    if not intervals:
-        return []
-
-    # ── Root fret on low E (open E = MIDI 40, semitone 4) ──────────
-    open_e_semi = 4
-    root_fret_on_low_e = (root_semi - open_e_semi) % 12
-
-    # ── CAGED box start offsets from root fret ──────────────────────
-    CAGED_OFFSETS = [0, 2, 5, 7, 10]
-
-    # Fetch enough fretboard to cover all 5 boxes
-    search_frets = max(num_frets, root_fret_on_low_e + 10 + 4)
-    all_notes = get_full_fretboard_arpeggio(root_name, arpeggio_name, search_frets)
-
-    positions = []
-    for i, offset in enumerate(CAGED_OFFSETS):
-        box_start = root_fret_on_low_e + offset
-        box_end   = box_start + 4
-
-        # All arpeggio notes within the strict 4-fret window
-        box_notes = [n for n in all_notes if box_start <= n["fret"] <= box_end]
-
-        # Grace-fret: extend one fret outside the window for any empty string
-        strings_covered = {n["string"] for n in box_notes}
-        for n in all_notes:
-            if n["string"] not in strings_covered:
-                if box_start - 1 <= n["fret"] <= box_end + 1:
-                    box_notes.append(n)
-                    strings_covered.add(n["string"])
-
-        # Include open strings when the box is near the nut
-        if box_start <= 2:
-            for n in all_notes:
-                if n["fret"] == 0 and n not in box_notes:
-                    box_notes.append(n)
-
-        positions.append({
-            "position_num": i + 1,
-            "start_fret": box_start,
-            "end_fret": box_end,
-            "notes": sorted(box_notes, key=lambda n: (n["string"], n["fret"])),
-        })
-
-    return positions
+    """Return five exploratory fret windows containing the arpeggio tones."""
+    from data.positions import fret_windows
+    return fret_windows(root_name, arpeggio_name, get_full_fretboard_arpeggio)
 
 
 _INTERVAL_LABELS = {
@@ -167,3 +117,5 @@ def get_arpeggio_interval_labels(arpeggio_name):
 def get_arpeggio_display_name(root_name, arpeggio_name):
     """e.g. 'A Minor Arpeggio'"""
     return f"{root_name} {arpeggio_name} Arpeggio"
+
+from data.instrument import get_tuning, string_names, string_column

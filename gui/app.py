@@ -14,21 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageTk
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-try:
-    import customtkinter as ctk
-except ImportError:
-    print("customtkinter not found. Install with: pip install customtkinter")
-    print("Falling back to basic tkinter...")
-    import tkinter as ctk
-    ctk.CTk = ctk.Tk
-    ctk.CTkFrame = ctk.Frame
-    ctk.CTkLabel = ctk.Label
-    ctk.CTkButton = ctk.Button
-    ctk.CTkOptionMenu = ctk.OptionMenu
-    ctk.CTkEntry = ctk.Entry
-    ctk.CTkTabview = None
-    ctk.set_appearance_mode = lambda x: None
-    ctk.set_default_color_theme = lambda x: None
+import customtkinter as ctk
 
 import config
 from data.chords import (
@@ -86,11 +72,10 @@ from data.triads import (
 ALL_PROG_NAMES = list(MAJOR_PROGRESSIONS.keys()) + list(MINOR_PROGRESSIONS.keys())
 
 
-def _mode_for_prog(prog_name="", custom=""):
+def _mode_for_prog(prog_name="", custom="", custom_mode="major"):
     """Auto-detect major/minor from progression name or custom roman string."""
     if custom:
-        first = custom.strip().replace(",", "-").split("-")[0].strip()
-        return "minor" if first and first[0].islower() else "major"
+        return custom_mode
     if prog_name in MAJOR_PROGRESSIONS:
         return "major"
     if prog_name in MINOR_PROGRESSIONS:
@@ -119,7 +104,12 @@ _CI_GRID_W    = 210
 _CI_GRID_H    = 248
 
 
-class DiagramStudioApp(ctk.CTk):
+from gui.workflows import WorkflowMixin
+from gui.identifier import IdentifierMixin
+from services.documents import CurrentDocument
+
+
+class DiagramStudioApp(WorkflowMixin, IdentifierMixin, ctk.CTk):
     def __init__(self):
         super().__init__()
 
@@ -135,6 +125,9 @@ class DiagramStudioApp(ctk.CTk):
             pass
 
         self.configure(bg=config.HEX_NAVY_DEEP)
+
+        self._init_workflows()
+        self.document = CurrentDocument()
 
         # Current state
         self._current_image = None
@@ -171,7 +164,7 @@ class DiagramStudioApp(ctk.CTk):
         # History & Favorites
         self._history = []           # list of snapshot dicts (newest first)
         self._MAX_HISTORY = 12
-        self._favorites_file = config.OUTPUT_DIR / "favorites.json"
+        self._favorites_file = config.DATA_DIR / "favorites.json"
         self._favorites = self._load_favorites()
 
         self._build_ui()
@@ -181,6 +174,7 @@ class DiagramStudioApp(ctk.CTk):
         self.bind_all("<Control-S>", lambda e: self._save_png_as())
         # Space plays audio (only when focus is NOT in an entry widget)
         self.bind_all("<space>", self._on_space)
+        self._start_workflows()
 
     def _build_ui(self):
         """Build the main UI layout."""
@@ -430,19 +424,19 @@ class DiagramStudioApp(ctk.CTk):
         self.root_var = ctk.StringVar(value="A")
         r = _lrow(sel_card, "Root:")
         ctk.CTkOptionMenu(r, variable=self.root_var, values=ROOT_NAMES,
-                          **_menu_kw, command=lambda _: self._update_chord(),
+                          **_menu_kw, command=lambda _: self._schedule_preview("Chord"),
                           ).grid(row=0, column=1, sticky="ew")
 
         self.quality_var = ctk.StringVar(value="Minor")
         r = _lrow(sel_card, "Quality:")
         ctk.CTkOptionMenu(r, variable=self.quality_var, values=CHORD_QUALITIES,
-                          **_menu_kw, command=lambda _: self._update_chord(),
+                          **_menu_kw, command=lambda _: self._schedule_preview("Chord"),
                           ).grid(row=0, column=1, sticky="ew")
 
         self.voicing_var = ctk.StringVar(value="1")
         r = _lrow(sel_card, "Voicing:")
         self.voicing_menu = ctk.CTkOptionMenu(r, variable=self.voicing_var, values=["1"],
-                                              **_menu_kw, command=lambda _: self._update_chord())
+                                              **_menu_kw, command=lambda _: self._schedule_preview("Chord"))
         self.voicing_menu.grid(row=0, column=1, sticky="ew")
         ctk.CTkFrame(sel_card, height=4, fg_color="transparent").pack()
 
@@ -451,7 +445,7 @@ class DiagramStudioApp(ctk.CTk):
         self.dot_label_var = ctk.StringVar(value="finger")
         r = _lrow(diag_card, "Dot label:")
         ctk.CTkOptionMenu(r, variable=self.dot_label_var, values=["note", "finger", "none"],
-                          **_menu_kw, command=lambda _: self._update_chord(),
+                          **_menu_kw, command=lambda _: self._schedule_preview("Chord"),
                           ).grid(row=0, column=1, sticky="ew")
 
         def _make_checkbox(parent, text, var):
@@ -461,7 +455,7 @@ class DiagramStudioApp(ctk.CTk):
                     text_color=config.HEX_CREAM, font=("Arial", 11),
                     fg_color=config.HEX_GOLD, hover_color=config.HEX_GOLD_BRIGHT,
                     checkmark_color=config.HEX_NAVY_DEEP,
-                    command=self._update_chord,
+                    command=lambda: self._schedule_preview("Chord"),
                 )
             except Exception:
                 return None
@@ -495,7 +489,7 @@ class DiagramStudioApp(ctk.CTk):
                 selected_hover_color=config.HEX_GOLD_BRIGHT,
                 unselected_color=config.HEX_NAVY_LIGHT,
                 text_color=config.HEX_CREAM,
-                command=lambda _: self._update_chord(),
+                command=lambda _: self._schedule_preview("Chord"),
             ).pack(padx=10, fill="x", pady=(2, 8))
         except Exception:
             pass
@@ -509,14 +503,14 @@ class DiagramStudioApp(ctk.CTk):
         self.scale_root_var = ctk.StringVar(value="A")
         r = _lrow(scale_card, "Root:")
         ctk.CTkOptionMenu(r, variable=self.scale_root_var, values=ROOT_NAMES,
-                          **_menu_kw, command=lambda _: self._update_scale(),
+                          **_menu_kw, command=lambda _: self._schedule_preview("Scale"),
                           ).grid(row=0, column=1, sticky="ew")
 
         self.scale_type_var = ctk.StringVar(value="Pentatonic Minor")
         r = _lrow(scale_card, "Scale:")
         self._scale_type_menu = ctk.CTkOptionMenu(
             r, variable=self.scale_type_var, values=SCALE_NAMES,
-            **_menu_kw, command=lambda _: self._update_scale(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Scale"),
         )
         self._scale_type_menu.grid(row=0, column=1, sticky="ew")
 
@@ -526,7 +520,7 @@ class DiagramStudioApp(ctk.CTk):
             r, variable=self.scale_view_var,
             values=["Full Fretboard",
                     "Position 1", "Position 2", "Position 3", "Position 4", "Position 5"],
-            **_menu_kw, command=lambda _: self._update_scale(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Scale"),
         ).grid(row=0, column=1, sticky="ew")
 
         self.invert_var = ctk.BooleanVar(value=True)
@@ -537,7 +531,7 @@ class DiagramStudioApp(ctk.CTk):
                 text_color=config.HEX_CREAM, font=("Arial", 11),
                 fg_color=config.HEX_GOLD, hover_color=config.HEX_GOLD_BRIGHT,
                 checkmark_color=config.HEX_NAVY_DEEP,
-                command=self._update_scale,
+                command=lambda: self._schedule_preview("Scale"),
             ).pack(padx=10, anchor="w", pady=(4, 8))
         except Exception:
             pass
@@ -549,14 +543,14 @@ class DiagramStudioApp(ctk.CTk):
         self.arp_root_var = ctk.StringVar(value="A")
         r = _lrow(arp_card, "Root:")
         ctk.CTkOptionMenu(r, variable=self.arp_root_var, values=ROOT_NAMES,
-                          **_menu_kw, command=lambda _: self._update_arpeggio(),
+                          **_menu_kw, command=lambda _: self._schedule_preview("Arpeggio"),
                           ).grid(row=0, column=1, sticky="ew")
 
         self.arp_type_var = ctk.StringVar(value="Minor")
         r = _lrow(arp_card, "Type:")
         self._arp_type_menu = ctk.CTkOptionMenu(
             r, variable=self.arp_type_var, values=ARPEGGIO_NAMES,
-            **_menu_kw, command=lambda _: self._update_arpeggio(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Arpeggio"),
         )
         self._arp_type_menu.grid(row=0, column=1, sticky="ew")
 
@@ -565,7 +559,7 @@ class DiagramStudioApp(ctk.CTk):
         ctk.CTkOptionMenu(
             r, variable=self.arp_view_var,
             values=["Full Fretboard", "Position 1", "Position 2", "Position 3", "Position 4"],
-            **_menu_kw, command=lambda _: self._update_arpeggio(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Arpeggio"),
         ).grid(row=0, column=1, sticky="ew")
         ctk.CTkFrame(arp_card, height=8, fg_color="transparent").pack()
 
@@ -576,23 +570,27 @@ class DiagramStudioApp(ctk.CTk):
         self.prog_root_var = ctk.StringVar(value="C")
         r = _lrow(prog_card, "Key Root:")
         ctk.CTkOptionMenu(r, variable=self.prog_root_var, values=ROOT_NAMES,
-                          **_menu_kw, command=lambda _: self._update_progression(),
+                          **_menu_kw, command=lambda _: self._schedule_preview("Progression"),
                           ).grid(row=0, column=1, sticky="ew")
 
         self.prog_quality_var = ctk.StringVar(value="Auto")
         r = _lrow(prog_card, "Quality:")
         ctk.CTkOptionMenu(
             r, variable=self.prog_quality_var,
-            values=["Auto", "Major", "Minor", "Maj7", "Dom7", "Min7", "7",
+            values=["Auto", "Major", "Minor", "Maj7", "Min7", "7",
                     "Dim", "Dim7", "Aug", "Sus2", "Sus4", "Add9", "Min7b5"],
-            **_menu_kw, command=lambda _: self._update_progression(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Progression"),
         ).grid(row=0, column=1, sticky="ew")
 
+        self.prog_key_mode_var = ctk.StringVar(value='major')
+        r = _lrow(prog_card, 'Custom key:')
+        ctk.CTkOptionMenu(r, variable=self.prog_key_mode_var, values=['major','minor'],
+                         **_menu_kw, command=lambda _: self._schedule_preview("Progression")).grid(row=0,column=1,sticky='ew')
         self.prog_name_var = ctk.StringVar(value=ALL_PROG_NAMES[0])
         r = _lrow(prog_card, "Prog:")
         self.prog_name_menu = ctk.CTkOptionMenu(
             r, variable=self.prog_name_var, values=ALL_PROG_NAMES,
-            **_menu_kw, command=lambda _: self._update_progression(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Progression"),
         )
         self.prog_name_menu.grid(row=0, column=1, sticky="ew")
 
@@ -611,7 +609,7 @@ class DiagramStudioApp(ctk.CTk):
             prog_card, text="Generate", height=32,
             fg_color=config.HEX_GOLD, text_color=config.HEX_NAVY_DEEP,
             hover_color=config.HEX_GOLD_BRIGHT,
-            command=self._update_progression,
+            command=lambda: self._schedule_preview("Progression"),
         ).pack(padx=8, fill="x", pady=(0, 8))
 
         # Diagram options card
@@ -619,7 +617,7 @@ class DiagramStudioApp(ctk.CTk):
         self.prog_dot_label_var = ctk.StringVar(value="note")
         r = _lrow(diag2_card, "Dot label:")
         ctk.CTkOptionMenu(r, variable=self.prog_dot_label_var, values=["note", "finger", "none"],
-                          **_menu_kw, command=lambda _: self._update_progression(),
+                          **_menu_kw, command=lambda _: self._schedule_preview("Progression"),
                           ).grid(row=0, column=1, sticky="ew")
 
         def _prog_checkbox(parent, text, var):
@@ -629,7 +627,7 @@ class DiagramStudioApp(ctk.CTk):
                     text_color=config.HEX_CREAM, font=("Arial", 11),
                     fg_color=config.HEX_GOLD, hover_color=config.HEX_GOLD_BRIGHT,
                     checkmark_color=config.HEX_NAVY_DEEP,
-                    command=self._update_progression,
+                    command=lambda: self._schedule_preview("Progression"),
                 )
             except Exception:
                 return None
@@ -647,7 +645,7 @@ class DiagramStudioApp(ctk.CTk):
                 selected_hover_color=config.HEX_GOLD_BRIGHT,
                 unselected_color=config.HEX_NAVY_LIGHT,
                 text_color=config.HEX_CREAM,
-                command=lambda _: self._update_progression(),
+                command=lambda _: self._schedule_preview("Progression"),
             ).pack(padx=10, fill="x", pady=(2, 4))
         except Exception:
             pass
@@ -1015,7 +1013,7 @@ class DiagramStudioApp(ctk.CTk):
         # Gold top border
         ctk.CTkFrame(self, fg_color=config.HEX_NAVY_LIGHT, height=1).pack(fill="x", side="bottom")
 
-        bar = ctk.CTkFrame(self, fg_color=config.HEX_NAVY_MID, height=95)
+        bar = ctk.CTkFrame(self, fg_color=config.HEX_NAVY_MID, height=140)
         bar.pack(fill="x", padx=0, pady=0, side="bottom")
         bar.pack_propagate(False)
 
@@ -1125,6 +1123,9 @@ class DiagramStudioApp(ctk.CTk):
         ctk.CTkFrame(ctrl_row, width=1, height=28, fg_color=config.HEX_NAVY_LIGHT
                      ).pack(side="left", padx=(0, 14))
 
+        ctrl_row = ctk.CTkFrame(bar, fg_color="transparent")
+        ctrl_row.pack(fill="x", padx=16, pady=(0, 8))
+
         ctk.CTkButton(
             ctrl_row, text="Save Video…", width=100, height=32,
             fg_color=config.HEX_NAVY_LIGHT, text_color=config.HEX_CREAM,
@@ -1181,6 +1182,8 @@ class DiagramStudioApp(ctk.CTk):
 
     def _set_mode(self, mode):
         self.mode_var.set(mode)
+        self.document = CurrentDocument()
+        self._current_image = None
 
         # Update mode button highlight colours
         for btn, name in (
@@ -1279,15 +1282,8 @@ class DiagramStudioApp(ctk.CTk):
         self._update_chord()
 
     def _custom_size(self, default_w, default_h):
-        """Return (width, height) from custom fields if filled, else defaults."""
-        try:
-            w = int(self.custom_w_var.get())
-            h = int(self.custom_h_var.get())
-            if w > 0 and h > 0:
-                return w, h
-        except (ValueError, AttributeError):
-            pass
         return default_w, default_h
+
 
     def _update_chord(self):
         """Regenerate chord diagram from current selections."""
@@ -1297,6 +1293,8 @@ class DiagramStudioApp(ctk.CTk):
             self._set_status(f"Error generating chord: {e}")
 
     def _update_chord_inner(self):
+        self.document = CurrentDocument()
+        self._current_image = None
         """Internal chord update logic."""
         root = self.root_var.get()
         quality = self.quality_var.get()
@@ -1374,6 +1372,8 @@ class DiagramStudioApp(ctk.CTk):
             self._set_status(f"Error generating scale: {e}")
 
     def _update_scale_inner(self):
+        self.document = CurrentDocument()
+        self._current_image = None
         self._current_is_arpeggio = False
         root = self.scale_root_var.get()
         root_name = root.split("/")[0] if "/" in root else root
@@ -1501,6 +1501,11 @@ class DiagramStudioApp(ctk.CTk):
         ctk.CTkOptionMenu(r, variable=root_var, values=ROOT_NAMES,
                           **_menu_kw, command=on_change).grid(row=0, column=1, sticky="ew")
 
+        mode_var = ctk.StringVar(value='major')
+        setattr(self, f'_{prefix}_key_mode_var', mode_var)
+        r = _lrow(main_card, 'Custom key:')
+        ctk.CTkOptionMenu(r, variable=mode_var, values=['major','minor'],
+                         **_menu_kw, command=on_change).grid(row=0,column=1,sticky='ew')
         name_var = ctk.StringVar(value=ALL_PROG_NAMES[0])
         setattr(self, f"_{prefix}_name_var", name_var)
         r = _lrow(main_card, "Prog:")
@@ -1765,9 +1770,11 @@ class DiagramStudioApp(ctk.CTk):
             self._set_status(f"Error generating scale progression: {e}")
 
     def _update_scale_prog_inner(self):
+        self.document = CurrentDocument()
+        self._current_image = None
         root    = getattr(self, "_scale_prog_root_var").get().split("/")[0]
         custom  = getattr(self, "_scale_prog_custom_var").get().strip()
-        mode    = _mode_for_prog(getattr(self, "_scale_prog_name_var").get(), custom)
+        mode    = _mode_for_prog(getattr(self, "_scale_prog_name_var").get(), custom, self._scale_prog_key_mode_var.get())
         pos_num = int(getattr(self, "_scale_prog_pos_var").get())
 
         if custom:
@@ -1815,9 +1822,11 @@ class DiagramStudioApp(ctk.CTk):
             self._set_status(f"Error generating arpeggio progression: {e}")
 
     def _update_arp_prog_inner(self):
+        self.document = CurrentDocument()
+        self._current_image = None
         root    = getattr(self, "_arp_prog_root_var").get().split("/")[0]
         custom  = getattr(self, "_arp_prog_custom_var").get().strip()
-        mode    = _mode_for_prog(getattr(self, "_arp_prog_name_var").get(), custom)
+        mode    = _mode_for_prog(getattr(self, "_arp_prog_name_var").get(), custom, self._arp_prog_key_mode_var.get())
         pos_num = int(getattr(self, "_arp_prog_pos_var").get())
 
         if custom:
@@ -1872,10 +1881,12 @@ class DiagramStudioApp(ctk.CTk):
             self._set_status(f"Error generating progression: {e}")
 
     def _update_progression_inner(self):
+        self.document = CurrentDocument()
+        self._current_image = None
         root = self.prog_root_var.get().split("/")[0]
         custom = self.prog_custom_var.get().strip()
         prog_name_peek = self.prog_name_var.get()
-        mode = _mode_for_prog(prog_name_peek, custom)
+        mode = _mode_for_prog(prog_name_peek, custom, self.prog_key_mode_var.get())
 
         if custom:
             degrees = parse_roman(custom, mode)
@@ -1954,6 +1965,8 @@ class DiagramStudioApp(ctk.CTk):
             self._set_status(f"Error generating triads: {e}")
 
     def _update_triads_inner(self):
+        self.document = CurrentDocument()
+        self._current_image = None
         key     = self.triads_key_var.get().split("/")[0]
         voicing = self.triads_voicing_var.get()
         scale   = getattr(self, "triads_scale_var", None)
@@ -2019,6 +2032,8 @@ class DiagramStudioApp(ctk.CTk):
             self._set_status(f"Error generating arpeggio: {e}")
 
     def _update_arpeggio_inner(self):
+        self.document = CurrentDocument()
+        self._current_image = None
         self._current_is_arpeggio = True
         root = self.arp_root_var.get()
         root_name = root.split("/")[0] if "/" in root else root
@@ -2079,16 +2094,19 @@ class DiagramStudioApp(ctk.CTk):
 
     def _show_preview(self, img):
         """Display a PIL image in the preview panel."""
+        self._preview_source = img
         # Fit to preview area
-        pw = self.preview_frame.winfo_width() or 700
-        ph = self.preview_frame.winfo_height() or 600
+        pw = self.preview_frame.winfo_width()
+        ph = self.preview_frame.winfo_height()
+        if pw < 10 or ph < 10:
+            pw, ph = 700, 600
 
-        scale = min(pw / img.width, ph / img.height, 1.0)
-        display_w = max(int(img.width * scale), 100)
-        display_h = max(int(img.height * scale), 100)
+        scale = min(pw / img.width, ph / img.height, 1.0) * self._preview_zoom
+        display_w = max(int(img.width * scale), 1)
+        display_h = max(int(img.height * scale), 1)
 
         display_img = img.resize((display_w, display_h), Image.Resampling.LANCZOS)
-        photo = ImageTk.PhotoImage(display_img)
+        photo = ctk.CTkImage(light_image=display_img, dark_image=display_img, size=(display_w, display_h))
 
         self.preview_label.configure(image=photo, text="")
         self.preview_label.image = photo  # Keep reference
@@ -2173,7 +2191,7 @@ class DiagramStudioApp(ctk.CTk):
         r = _lrow(main_card, "Key:")
         ctk.CTkOptionMenu(
             r, variable=self.triads_key_var, values=ROOT_NAMES,
-            **_menu_kw, command=lambda _: self._update_triads(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Triads"),
         ).grid(row=0, column=1, sticky="ew")
 
         # Scale type / mode
@@ -2193,7 +2211,7 @@ class DiagramStudioApp(ctk.CTk):
         ctk.CTkOptionMenu(
             self._triads_voicing_row, variable=self.triads_voicing_var,
             values=TRIAD_VOICING_NAMES,
-            **_menu_kw, command=lambda _: self._update_triads(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Triads"),
         ).grid(row=0, column=1, sticky="ew")
 
         # Custom quality row (shown only when Scale = "Custom")
@@ -2203,7 +2221,7 @@ class DiagramStudioApp(ctk.CTk):
         ctk.CTkOptionMenu(
             self._triads_quality_row, variable=self.triads_quality_var,
             values=TRIAD_QUALITIES,
-            **_menu_kw, command=lambda _: self._update_triads(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Triads"),
         ).grid(row=0, column=1, sticky="ew")
         self._triads_quality_row.pack_forget()   # hidden by default
 
@@ -2211,7 +2229,7 @@ class DiagramStudioApp(ctk.CTk):
             main_card, text="Generate", height=32,
             fg_color=config.HEX_GOLD, text_color=config.HEX_NAVY_DEEP,
             hover_color=config.HEX_GOLD_BRIGHT,
-            command=self._update_triads,
+            command=lambda: self._schedule_preview("Triads"),
         ).pack(padx=8, fill="x", pady=(0, 8))
 
         # Display settings card
@@ -2221,7 +2239,7 @@ class DiagramStudioApp(ctk.CTk):
         r = _lrow(disp_card, "Dot label:")
         ctk.CTkOptionMenu(
             r, variable=self.triads_dot_label_var, values=["note", "finger", "none"],
-            **_menu_kw, command=lambda _: self._update_triads(),
+            **_menu_kw, command=lambda _: self._schedule_preview("Triads"),
         ).grid(row=0, column=1, sticky="ew")
 
         self.triads_show_barre_var = ctk.BooleanVar(value=True)
@@ -2230,7 +2248,7 @@ class DiagramStudioApp(ctk.CTk):
             variable=self.triads_show_barre_var,
             font=("Arial", 10), text_color=config.HEX_CREAM,
             checkbox_width=16, checkbox_height=16,
-            command=self._update_triads,
+            command=lambda: self._schedule_preview("Triads"),
         ).pack(anchor="w", padx=10, pady=(2, 2))
 
         self.triads_barre_style_var = ctk.StringVar(value="Rectangle")
@@ -2242,7 +2260,7 @@ class DiagramStudioApp(ctk.CTk):
                 selected_hover_color=config.HEX_GOLD_BRIGHT,
                 unselected_color=config.HEX_NAVY_LIGHT,
                 text_color=config.HEX_CREAM,
-                command=lambda _: self._update_triads(),
+                command=lambda _: self._schedule_preview("Triads"),
             ).pack(padx=10, fill="x", pady=(2, 4))
         except Exception:
             pass
@@ -2253,7 +2271,7 @@ class DiagramStudioApp(ctk.CTk):
             variable=self.triads_show_string_names_var,
             font=("Arial", 10), text_color=config.HEX_CREAM,
             checkbox_width=16, checkbox_height=16,
-            command=self._update_triads,
+            command=lambda: self._schedule_preview("Triads"),
         ).pack(anchor="w", padx=10, pady=(2, 6))
 
     def _build_chord_lookup_panel(self):
@@ -2577,12 +2595,12 @@ class DiagramStudioApp(ctk.CTk):
     # ── Audio ──────────────────────────────────────────────
 
     def _bpm_to_note_ms(self):
-        """Convert current BPM selection to note duration in ms (eighth notes)."""
+        """Convert current BPM selection to note duration in ms (one note per beat)."""
         try:
             bpm = int(self.tempo_var.get())
         except (ValueError, AttributeError):
             bpm = 100
-        return int(60000 / bpm)  # eighth notes at given BPM
+        return 60000 / max(20, min(400, bpm))  # one note per beat
 
     def _rebuild_direction_controls(self, prefix, labels, options, default):
         """
@@ -2635,87 +2653,6 @@ class DiagramStudioApp(ctk.CTk):
             direction = "up" if val == "up" else "down"
             return "strum", direction
 
-    def _build_audio(self, tone):
-        """Generate audio for whatever is currently displayed."""
-        if self._current_frets:
-            play_style, strum_dir = self._parse_play_style()
-            return generate_chord_audio(
-                self._current_frets,
-                tone=tone,
-                play_style=play_style,
-                strum_direction=strum_dir,
-            )
-        elif self._current_progression:
-            dur = getattr(self, "prog_duration_var", None)
-            chord_dur = dur.get() if dur else 2.0
-            play_style, default_dir = self._parse_play_style()
-            dir_vars = getattr(self, "_prog_dir_vars", [])
-            strum_dirs = [
-                "up" if (dir_vars[i].get() == "Up") else "down"
-                for i in range(len(self._current_progression))
-                if i < len(dir_vars)
-            ]
-            # Pad with default if fewer vars than chords
-            while len(strum_dirs) < len(self._current_progression):
-                strum_dirs.append(default_dir)
-            play_styles = [play_style] * len(self._current_progression)
-            return generate_progression_audio(
-                self._current_progression,
-                tone=tone,
-                chord_duration_s=chord_dur,
-                strum_directions=strum_dirs,
-                play_styles=play_styles,
-            )
-        elif self._current_scale_prog_items is not None:
-            import numpy as np
-            from data.scales import get_full_fretboard_scale
-            note_ms = self._bpm_to_note_ms()
-            dir_vars = getattr(self, "_scale_prog_dir_vars", [])
-            segments = []
-            for idx, item in enumerate(self._current_scale_prog_items):
-                d = dir_vars[idx].get() if idx < len(dir_vars) else "Asc"
-                asc  = d in ("Asc", "Asc + Desc")
-                desc = d in ("Desc", "Asc + Desc")
-                notes = get_full_fretboard_scale(item["chord_root"], item["scale_name"])
-                seg = generate_scale_audio(
-                    notes, tone=tone, note_duration_ms=note_ms,
-                    ascending=asc, descending=desc, root_to_root=True,
-                )
-                segments.append(seg)
-            if not segments:
-                return None
-            return np.concatenate(segments)
-        elif self._current_arp_prog_items is not None:
-            import numpy as np
-            from data.arpeggios import get_full_fretboard_arpeggio
-            note_ms = self._bpm_to_note_ms()
-            dir_vars = getattr(self, "_arp_prog_dir_vars", [])
-            segments = []
-            for idx, item in enumerate(self._current_arp_prog_items):
-                d = dir_vars[idx].get() if idx < len(dir_vars) else "Asc"
-                asc  = d in ("Asc", "Asc + Desc")
-                desc = d in ("Desc", "Asc + Desc")
-                notes = get_full_fretboard_arpeggio(item["chord_root"], item["arp_name"])
-                seg = generate_scale_audio(
-                    notes, tone=tone, note_duration_ms=note_ms,
-                    ascending=asc, descending=desc, root_to_root=True,
-                    stop_at_high_e_root=True,
-                )
-                segments.append(seg)
-            if not segments:
-                return None
-            return np.concatenate(segments)
-        elif self._current_scale_notes:
-            return generate_scale_audio(
-                self._current_scale_notes,
-                tone=tone,
-                note_duration_ms=self._bpm_to_note_ms(),
-                ascending=True,
-                descending=True,
-                root_to_root=True,
-                stop_at_high_e_root=self._current_is_arpeggio,
-            )
-        return None
 
     def _apply_tone_settings(self):
         """Push GUI slider values into the audio engine's TONE_SETTINGS dict."""
@@ -2728,250 +2665,17 @@ class DiagramStudioApp(ctk.CTk):
         _eng.TONE_SETTINGS["body"]       = self.tone_body_var.get()
         _eng.TONE_SETTINGS["reverb"]     = self.tone_reverb_var.get()
 
-    def _play_audio(self):
-        """Play audio for current chord or scale."""
-        tone = self.tone_var.get()
-        volume = getattr(self, "volume_var", None)
-        vol = volume.get() if volume else 0.8
 
-        def _play():
-            self._set_status("Playing...")
-            self.after(0, lambda: self._show_progress(indeterminate=True))
-            try:
-                audio = self._build_audio(tone)
-                if audio is None:
-                    self._set_status("Nothing to play — select a chord or scale first")
-                    return
-                self._current_audio = audio
-                play_audio(audio, volume=vol)
-            except Exception as e:
-                self._set_status(f"Playback error: {e}")
-            finally:
-                self.after(0, self._hide_progress)
-                if self.status_label.cget("text") == "Playing...":
-                    self.after(0, lambda: self._set_status(""))
 
-        threading.Thread(target=_play, daemon=True).start()
-
-    def _stop_audio(self):
-        """Stop currently playing audio."""
-        stop_audio()
-        self._set_status("Stopped")
-
-    def _export_audio(self, fmt):
-        """Export current audio to file."""
-        import numpy as np
-        tone = self.tone_var.get()
-        name = self._current_name or "untitled"
-
-        audio = self._build_audio(tone)
-        if audio is None:
-            self._set_status("Nothing to export — select a chord or scale first")
-            return
-
-        # Apply volume slider to export (same as playback)
-        volume = getattr(self, "volume_var", None)
-        vol = volume.get() if volume else 0.8
-        audio = np.clip(audio * vol, -1.0, 1.0)
-
-        output_dir = config.OUTPUT_DIR / "audio"
-        if fmt == "wav":
-            path = export_wav(audio, output_dir / f"{name}.wav")
-        else:
-            path = export_mp3(audio, output_dir / f"{name}.mp3")
-
-        if path:
-            self._set_status(f"Saved: {path}")
-        else:
-            self._set_status("Export failed — check dependencies")
 
     # ── Image Export ───────────────────────────────────────
 
-    def _save_png_as(self):
-        """Open Save As dialog then export current diagram as PNG."""
-        if self._current_image is None:
-            self._set_status("Nothing to export — generate a diagram first")
-            return
 
-        name = self._current_name or "diagram"
-        res = self.res_var.get()
-        bg = self.bg_var.get()
-        default_name = f"{name}_{res}_{bg}.png"
-
-        path = filedialog.asksaveasfilename(
-            title="Save PNG As",
-            initialdir=str(config.OUTPUT_DIR),
-            initialfile=default_name,
-            defaultextension=".png",
-            filetypes=[("PNG image", "*.png"), ("All files", "*.*")],
-        )
-        if not path:
-            return
-
-        saved = export_diagram(self._current_image, path, res, bg)
-        self._set_status(f"Saved: {saved}")
-
-    def _export_all(self):
-        """Export current diagram in all resolutions and backgrounds."""
-        if self._current_image is None:
-            self._set_status("Nothing to export — generate a diagram first")
-            return
-
-        name = self._current_name or "diagram"
-        sub = "chords" if self._current_frets else "scales"
-        output_dir = config.OUTPUT_DIR / sub
-
-        paths = batch_export(self._current_image, name, output_dir)
-        self._set_status(f"Exported {len(paths)} files to {output_dir}")
 
     # ── Tab Export ─────────────────────────────────────────
 
-    def _render_tab_image(self):
-        """Render the current state as a tab PIL image and return it (or None)."""
-        bg_raw = getattr(self, "bg_var", None)
-        bg_name = bg_raw.get() if bg_raw else "transparent"
-        bg = config.NAVY_DEEP if bg_name == "navy" else None
 
-        if self._current_frets:
-            from diagrams.tab_diagram import render_chord_tab
-            return render_chord_tab(
-                frets=self._current_frets,
-                chord_name=self._current_name.replace("_", " "),
-                bg_color=bg,
-            )
-        elif self._current_progression:
-            from diagrams.tab_diagram import render_chord_tab
-            tab_w, tab_h, gap = 500, 420, 10
-            tabs = [render_chord_tab(frets=c["frets"], chord_name=c["display_name"],
-                                     bg_color=bg, width=tab_w, height=tab_h)
-                    for c in self._current_progression]
-            total_w = tab_w * len(tabs) + gap * (len(tabs) - 1)
-            img = Image.new("RGBA", (total_w, tab_h), (bg or config.NAVY_DEEP) + (255,))
-            for idx, t in enumerate(tabs):
-                img.paste(t, (idx * (tab_w + gap), 0))
-            return img
-        elif self._current_scale_prog_items is not None:
-            tab_w, tab_h, gap = 900, 280, 12
-            dir_vars = getattr(self, "_scale_prog_dir_vars", [])
-            pos_num_var = getattr(self, "_scale_prog_pos_var", None)
-            pos_num = int(pos_num_var.get()) if pos_num_var else 1
-            tabs = []
-            for idx, item in enumerate(self._current_scale_prog_items):
-                d = dir_vars[idx].get() if idx < len(dir_vars) else "Asc"
-                asc  = d in ("Asc", "Asc + Desc")
-                desc = d in ("Desc", "Asc + Desc")
-                positions = get_caged_positions(item["chord_root"], item["scale_name"])
-                if pos_num <= len(positions):
-                    notes = positions[pos_num - 1]["notes"]
-                else:
-                    notes = get_full_fretboard_scale(item["chord_root"], item["scale_name"])
-                tabs.append(render_scale_tab(
-                    notes_data=notes, title=item["display_name"],
-                    bg_color=bg, width=tab_w, height=tab_h,
-                    ascending=asc, descending=desc, root_to_root=True,
-                ))
-            total_w = tab_w * len(tabs) + gap * (len(tabs) - 1)
-            img = Image.new("RGBA", (total_w, tab_h), (bg or config.NAVY_DEEP) + (255,))
-            for idx, t in enumerate(tabs):
-                img.paste(t, (idx * (tab_w + gap), 0))
-            return img
-        elif self._current_arp_prog_items is not None:
-            tab_w, tab_h, gap = 600, 280, 12
-            dir_vars = getattr(self, "_arp_prog_dir_vars", [])
-            pos_num_var = getattr(self, "_arp_prog_pos_var", None)
-            pos_num = int(pos_num_var.get()) if pos_num_var else 1
-            tabs = []
-            for idx, item in enumerate(self._current_arp_prog_items):
-                d = dir_vars[idx].get() if idx < len(dir_vars) else "Asc"
-                asc  = d in ("Asc", "Asc + Desc")
-                desc = d in ("Desc", "Asc + Desc")
-                positions = get_arpeggio_positions(item["chord_root"], item["arp_name"])
-                if pos_num <= len(positions):
-                    notes = positions[pos_num - 1]["notes"]
-                else:
-                    notes = get_full_fretboard_arpeggio(item["chord_root"], item["arp_name"])
-                tabs.append(render_scale_tab(
-                    notes_data=notes, title=item["display_name"],
-                    bg_color=bg, width=tab_w, height=tab_h,
-                    ascending=asc, descending=desc, root_to_root=True,
-                    stop_at_high_e_root=True,
-                ))
-            total_w = tab_w * len(tabs) + gap * (len(tabs) - 1)
-            img = Image.new("RGBA", (total_w, tab_h), (bg or config.NAVY_DEEP) + (255,))
-            for idx, t in enumerate(tabs):
-                img.paste(t, (idx * (tab_w + gap), 0))
-            return img
-        elif self._current_scale_notes:
-            return render_scale_tab(
-                notes_data=self._current_scale_notes,
-                title=self._current_name.replace("_", " "),
-                bg_color=bg,
-                width=1600,
-                height=420,
-                ascending=True,
-                descending=True,
-                root_to_root=True,
-                stop_at_high_e_root=self._current_is_arpeggio,
-            )
-        return None
 
-    def _preview_tab(self):
-        """Render the tab and display it in the main preview area."""
-        has_content = (
-            self._current_frets or self._current_scale_notes
-            or self._current_progression
-            or self._current_scale_prog_items is not None
-            or self._current_arp_prog_items is not None
-        )
-        if not has_content:
-            self._set_status("Nothing to preview — generate a diagram first")
-            return
-
-        def _run():
-            self.after(0, lambda: self._show_progress(indeterminate=True))
-            try:
-                img = self._render_tab_image()
-                if img:
-                    self.after(0, lambda: self._show_preview(img))
-                    self.after(0, lambda: self._set_status(
-                        "Tab preview — click any Generate button to return to diagram"))
-            except Exception as e:
-                self.after(0, lambda: self._set_status(f"Tab preview error: {e}"))
-            finally:
-                self.after(0, self._hide_progress)
-
-        threading.Thread(target=_run, daemon=True).start()
-
-    def _save_tab_as(self):
-        """Open Save As dialog then export current diagram as a guitar tab PNG."""
-        has_content = (
-            self._current_frets or self._current_scale_notes
-            or self._current_progression
-            or self._current_scale_prog_items is not None
-            or self._current_arp_prog_items is not None
-        )
-        if not has_content:
-            self._set_status("Nothing to export — generate a diagram first")
-            return
-
-        name = self._current_name or "tab"
-        default_name = f"{name}_tab.png"
-        path = filedialog.asksaveasfilename(
-            title="Save Tab As",
-            initialdir=str(config.OUTPUT_DIR),
-            initialfile=default_name,
-            defaultextension=".png",
-            filetypes=[("PNG image", "*.png"), ("All files", "*.*")],
-        )
-        if not path:
-            return
-
-        img = self._render_tab_image()
-        if img is None:
-            self._set_status("Nothing to export — generate a diagram first")
-            return
-        img.save(str(path))
-        self._set_status(f"Tab saved: {path}")
 
     # ── Video Export ────────────────────────────────────────
 
@@ -3052,414 +2756,18 @@ class DiagramStudioApp(ctk.CTk):
             arp_prog_duration=int(self._arp_prog_duration_var.get() * 1000) if hasattr(self, "_arp_prog_duration_var") else 2000,
             arp_prog_dirs=[v.get() for v in getattr(self, "_arp_prog_dir_vars", [])],
         )
-        # Render tab image on UI thread now (PIL object; not JSON-serialisable but fine in-memory)
-        snap["tab_img"] = self._render_tab_image() if snap["with_tab"] else None
+        import copy
+        snap['render_spec'] = copy.deepcopy(self._current_image.info.get('render_spec')) if self._current_image else None
+        snap['instrument'] = self._instrument_settings()
+        snap['volume'] = self.volume_var.get() if hasattr(self, 'volume_var') else .8
+        snap['tone_settings'] = {key: getattr(self, 'tone_'+key+'_var').get()
+                                 for key in ('attack','decay','brightness','warmth','harmonics','body','reverb')}
         return snap
 
-    def _add_to_batch_queue(self):
-        """Snapshot current state and add it to the batch export queue."""
-        snap = self._snapshot_current_state()
-        if snap is None:
-            self._set_status("Nothing to queue — generate a diagram first")
-            return
-        self._batch_queue.append(snap)
-        n = len(self._batch_queue)
-        self._batch_export_btn.configure(text=f"Export Queue ({n})")
-        self._set_status(f"Added to queue: {snap['name']} ({n} item{'s' if n != 1 else ''} total)")
 
-    def _clear_batch_queue(self):
-        """Clear all items from the batch export queue."""
-        self._batch_queue.clear()
-        self._batch_export_btn.configure(text="Export Queue (0)")
-        self._set_status("Batch queue cleared")
 
-    def _export_batch_queue(self):
-        """Pick an output folder and export all queued items as MP4s."""
-        if not self._batch_queue:
-            self._set_status("Batch queue is empty — use '+ Queue' to add items")
-            return
 
-        out_dir = filedialog.askdirectory(
-            title="Select folder for batch video export",
-            initialdir=str(config.OUTPUT_DIR),
-        )
-        if not out_dir:
-            return
 
-        import os
-        queue = list(self._batch_queue)   # snapshot so UI changes don't interfere
-        self._batch_queue.clear()
-        self._batch_export_btn.configure(text="Export Queue (0)")
-
-        def _run():
-            total = len(queue)
-            for idx, snap in enumerate(queue):
-                self._set_status(f"Batch export {idx + 1}/{total}: {snap['name']}…")
-                self.after(0, self._show_progress)
-                try:
-                    # Build a unique output path (avoid collisions)
-                    base = snap["name"].replace(" ", "_").replace("/", "-")
-                    out_path = os.path.join(out_dir, f"{base}.mp4")
-                    counter = 2
-                    while os.path.exists(out_path):
-                        out_path = os.path.join(out_dir, f"{base}_{counter}.mp4")
-                        counter += 1
-
-                    self._export_snapshot(snap, out_path)
-                except Exception as e:
-                    self._set_status(f"Error exporting {snap['name']}: {e}")
-            self.after(0, self._hide_progress)
-            self._set_status(f"Batch export complete — {total} video{'s' if total != 1 else ''} saved to {out_dir}")
-
-        threading.Thread(target=_run, daemon=True).start()
-
-    def _export_snapshot(self, snap, out_path):
-        """Export a single batch-queue snapshot dict to *out_path* (called from worker thread)."""
-        import numpy as _np
-
-        tone     = snap["tone"]
-        note_ms  = snap["note_ms"]
-        disp     = snap["disp"]
-        portrait = snap["portrait"]
-        tab_img  = snap["tab_img"]
-        bg       = config.NAVY_DEEP
-        _ps, _sd = snap["play_style_raw"]
-
-        if snap["frets"]:
-            audio = generate_chord_audio(
-                snap["frets"], tone=tone,
-                play_style=_ps, strum_direction=_sd,
-                strum_delay_ms=20, arpeggio_delay_ms=note_ms,
-            )
-            render_kwargs = dict(
-                frets=snap["frets"],
-                fingers=snap["fingers"],
-                chord_name=snap["name"],
-                root_semitone=snap["root_semitone"],
-                bg_color=bg, width=600, height=800,
-                show_watermark=True,
-                show_muted_x=snap["show_muted_x"],
-                show_open_o=snap["show_open_o"],
-                dot_label=disp["dot_label"],
-                show_string_names=disp["show_string_names"],
-                show_finger_numbers=disp["show_finger_numbers"],
-                show_barre=disp["show_barre"],
-                barre_style=disp["barre_style"],
-                strum_direction=_sd,
-            )
-            export_chord_video(
-                frets=snap["frets"], render_fn=render_chord_diagram,
-                render_kwargs=render_kwargs, audio_data=audio,
-                output_path=out_path, play_style=_ps,
-                strum_delay_ms=20, arpeggio_delay_ms=note_ms,
-                portrait=portrait, tab_img=tab_img,
-            )
-
-        elif snap["scale_notes"]:
-            audio = generate_scale_audio(
-                snap["scale_notes"], tone=tone, note_duration_ms=note_ms,
-                ascending=True, descending=True, root_to_root=True,
-                stop_at_high_e_root=snap["is_arpeggio"],
-            )
-            render_kwargs = dict(
-                scale_notes=snap["scale_notes"], scale_name="", root_name="",
-                bg_color=bg, width=1600, height=500,
-                invert=snap["invert"],
-                ascending=True, descending=True, root_to_root=True,
-            )
-            export_scale_video(
-                notes_data=snap["scale_notes"], render_fn=render_scale_full_fretboard,
-                render_kwargs=render_kwargs, audio_data=audio,
-                output_path=out_path, note_duration_ms=note_ms,
-                portrait=portrait, tab_img=tab_img,
-            )
-
-        elif snap["progression"]:
-            chord_dur = snap["prog_duration"]
-            dir_vars  = snap["prog_strum_dirs"]
-            strum_dirs = ["up" if d == "Up" else "down" for d in dir_vars]
-            while len(strum_dirs) < len(snap["progression"]):
-                strum_dirs.append(_sd)
-            audio = generate_progression_audio(
-                snap["progression"], tone=tone,
-                chord_duration_s=chord_dur, strum_directions=strum_dirs,
-            )
-            export_progression_video(
-                chords=snap["progression"], title=snap["prog_title"],
-                audio_data=audio, output_path=out_path,
-                chord_duration_ms=int(chord_dur * 1000),
-                dot_label=disp["dot_label"], show_barre=disp["show_barre"],
-                barre_style=disp["barre_style"],
-                show_string_names=disp["show_string_names"],
-                show_finger_numbers=disp["show_finger_numbers"],
-                portrait=portrait, tab_img=tab_img,
-            )
-
-        elif snap["scale_prog_items"]:
-            from data.scales import get_full_fretboard_scale
-            segs = []
-            dirs = snap["scale_prog_dirs"]
-            for idx, item in enumerate(snap["scale_prog_items"]):
-                d = dirs[idx] if idx < len(dirs) else "Asc"
-                asc  = d in ("Asc", "Asc + Desc")
-                desc = d in ("Desc", "Asc + Desc")
-                notes = get_full_fretboard_scale(item["chord_root"], item["scale_name"])
-                segs.append(generate_scale_audio(notes, tone=tone, note_duration_ms=note_ms,
-                                                 ascending=asc, descending=desc, root_to_root=True))
-            audio = _np.concatenate(segs)
-            export_scale_arp_progression_video(
-                items=snap["scale_prog_items"], title=snap["prog_title"],
-                audio_data=audio, output_path=out_path,
-                strip_render_fn=render_scale_progression_strip,
-                position_num=snap["scale_prog_pos"],
-                item_duration_ms=snap["scale_prog_duration"],
-                portrait=portrait, tab_img=tab_img,
-            )
-
-        elif snap["arp_prog_items"]:
-            from data.arpeggios import get_full_fretboard_arpeggio
-            segs = []
-            dirs = snap["arp_prog_dirs"]
-            for idx, item in enumerate(snap["arp_prog_items"]):
-                d = dirs[idx] if idx < len(dirs) else "Asc"
-                asc  = d in ("Asc", "Asc + Desc")
-                desc = d in ("Desc", "Asc + Desc")
-                notes = get_full_fretboard_arpeggio(item["chord_root"], item["arp_name"])
-                segs.append(generate_scale_audio(notes, tone=tone, note_duration_ms=note_ms,
-                                                 ascending=asc, descending=desc, root_to_root=True,
-                                                 stop_at_high_e_root=True))
-            audio = _np.concatenate(segs)
-            export_scale_arp_progression_video(
-                items=snap["arp_prog_items"], title=snap["prog_title"],
-                audio_data=audio, output_path=out_path,
-                strip_render_fn=render_arpeggio_progression_strip,
-                position_num=snap["arp_prog_pos"],
-                item_duration_ms=snap["arp_prog_duration"],
-                portrait=portrait, tab_img=tab_img,
-            )
-
-    def _save_video_as(self):
-        """Open Save As dialog then export the current diagram + audio as an MP4 video."""
-        if (not self._current_frets and not self._current_scale_notes
-                and not self._current_progression
-                and self._current_scale_prog_items is None
-                and self._current_arp_prog_items is None):
-            self._set_status("Nothing to export — generate a diagram first")
-            return
-
-        name = self._current_name or "video"
-        out_path = filedialog.asksaveasfilename(
-            title="Save Video As",
-            initialdir=str(config.OUTPUT_DIR),
-            initialfile=f"{name}.mp4",
-            defaultextension=".mp4",
-            filetypes=[("MP4 video", "*.mp4"), ("All files", "*.*")],
-        )
-        if not out_path:
-            return
-
-        tone = self.tone_var.get()
-        note_ms = self._bpm_to_note_ms()
-        bg = config.NAVY_DEEP
-
-        # Snapshot display settings on the UI thread before handing off
-        disp = self._video_display_kwargs()
-        portrait = self.video_portrait_var.get() if hasattr(self, "video_portrait_var") else False
-        with_tab  = self.video_with_tab_var.get()  if hasattr(self, "video_with_tab_var")  else False
-        tab_img   = self._render_tab_image() if with_tab else None
-
-        def _run():
-            self._set_status("Rendering video…")
-            self.after(0, self._show_progress)
-
-            try:
-                if self._current_frets:
-                    _ps, _sd = self._parse_play_style()
-                    _strum_delay_ms = 20
-                    _arp_delay_ms   = note_ms   # BPM-driven arpeggio timing
-                    audio = generate_chord_audio(
-                        self._current_frets,
-                        tone=tone,
-                        play_style=_ps,
-                        strum_direction=_sd,
-                        strum_delay_ms=_strum_delay_ms,
-                        arpeggio_delay_ms=_arp_delay_ms,
-                    )
-                    render_kwargs = dict(
-                        frets=self._current_frets,
-                        fingers=getattr(self, "_current_fingers", None),
-                        chord_name=self._current_name or "",
-                        root_semitone=getattr(self, "_current_root_semitone", None),
-                        bg_color=bg,
-                        width=600,
-                        height=800,
-                        show_watermark=True,
-                        show_muted_x=self.show_muted_x_var.get() if hasattr(self, "show_muted_x_var") else True,
-                        show_open_o=self.show_open_o_var.get()   if hasattr(self, "show_open_o_var")   else True,
-                        dot_label=disp["dot_label"],
-                        show_string_names=disp["show_string_names"],
-                        show_finger_numbers=disp["show_finger_numbers"],
-                        show_barre=disp["show_barre"],
-                        barre_style=disp["barre_style"],
-                        strum_direction=_sd,
-                    )
-                    path = export_chord_video(
-                        frets=self._current_frets,
-                        render_fn=render_chord_diagram,
-                        render_kwargs=render_kwargs,
-                        audio_data=audio,
-                        output_path=out_path,
-                        play_style=_ps,
-                        strum_delay_ms=_strum_delay_ms,
-                        arpeggio_delay_ms=_arp_delay_ms,
-                        portrait=portrait,
-                        tab_img=tab_img,
-                    )
-
-                elif self._current_scale_notes:
-                    audio = generate_scale_audio(
-                        self._current_scale_notes,
-                        tone=tone,
-                        note_duration_ms=note_ms,
-                        ascending=True,
-                        descending=True,
-                        root_to_root=True,
-                        stop_at_high_e_root=self._current_is_arpeggio,
-                    )
-                    invert = self.invert_var.get() if hasattr(self, "invert_var") else False
-                    render_kwargs = dict(
-                        scale_notes=self._current_scale_notes,
-                        scale_name="",
-                        root_name="",
-                        bg_color=bg,
-                        width=1600,
-                        height=500,
-                        invert=invert,
-                        ascending=True,
-                        descending=True,
-                        root_to_root=True,
-                    )
-                    path = export_scale_video(
-                        notes_data=self._current_scale_notes,
-                        render_fn=render_scale_full_fretboard,
-                        render_kwargs=render_kwargs,
-                        audio_data=audio,
-                        output_path=out_path,
-                        note_duration_ms=note_ms,
-                        portrait=portrait,
-                        tab_img=tab_img,
-                    )
-
-                elif self._current_progression:
-                    dur = getattr(self, "prog_duration_var", None)
-                    chord_dur = dur.get() if dur else 2.0
-                    dir_vars = getattr(self, "_prog_dir_vars", [])
-                    strum_dirs = [
-                        "up" if (dir_vars[i].get() == "Up") else "down"
-                        for i in range(len(self._current_progression))
-                        if i < len(dir_vars)
-                    ]
-                    while len(strum_dirs) < len(self._current_progression):
-                        strum_dirs.append(self._parse_play_style()[1])
-                    audio = generate_progression_audio(
-                        self._current_progression,
-                        tone=tone,
-                        chord_duration_s=chord_dur,
-                        strum_directions=strum_dirs,
-                    )
-                    path = export_progression_video(
-                        chords=self._current_progression,
-                        title=self._current_prog_title,
-                        audio_data=audio,
-                        output_path=out_path,
-                        chord_duration_ms=int(chord_dur * 1000),
-                        dot_label=disp["dot_label"],
-                        show_barre=disp["show_barre"],
-                        barre_style=disp["barre_style"],
-                        show_string_names=disp["show_string_names"],
-                        show_finger_numbers=disp["show_finger_numbers"],
-                        portrait=portrait,
-                        tab_img=tab_img,
-                    )
-
-                elif self._current_scale_prog_items is not None:
-                    from data.scales import get_full_fretboard_scale
-                    dur = getattr(self, "_scale_prog_duration_var", None)
-                    item_dur_ms = int(dur.get() * 1000) if dur else 2000
-                    segments = []
-                    scale_dir_vars = getattr(self, "_scale_prog_dir_vars", [])
-                    for idx, item in enumerate(self._current_scale_prog_items):
-                        d = scale_dir_vars[idx].get() if idx < len(scale_dir_vars) else "Asc"
-                        asc  = d in ("Asc", "Asc + Desc")
-                        desc = d in ("Desc", "Asc + Desc")
-                        notes = get_full_fretboard_scale(item["chord_root"], item["scale_name"])
-                        seg = generate_scale_audio(notes, tone=tone, note_duration_ms=note_ms,
-                                                   ascending=asc, descending=desc, root_to_root=True)
-                        segments.append(seg)
-                    import numpy as np
-                    audio = np.concatenate(segments)
-                    pos_num = getattr(self, "_scale_prog_pos_var", None)
-                    position_num = int(pos_num.get()) if pos_num else 1
-                    title = getattr(self, "_current_prog_title", "")
-                    path = export_scale_arp_progression_video(
-                        items=self._current_scale_prog_items,
-                        title=title,
-                        audio_data=audio,
-                        output_path=out_path,
-                        strip_render_fn=render_scale_progression_strip,
-                        position_num=position_num,
-                        item_duration_ms=item_dur_ms,
-                        portrait=portrait,
-                        tab_img=tab_img,
-                    )
-
-                elif self._current_arp_prog_items is not None:
-                    from data.arpeggios import get_full_fretboard_arpeggio
-                    dur = getattr(self, "_arp_prog_duration_var", None)
-                    item_dur_ms = int(dur.get() * 1000) if dur else 2000
-                    segments = []
-                    arp_dir_vars = getattr(self, "_arp_prog_dir_vars", [])
-                    for idx, item in enumerate(self._current_arp_prog_items):
-                        d = arp_dir_vars[idx].get() if idx < len(arp_dir_vars) else "Asc"
-                        asc  = d in ("Asc", "Asc + Desc")
-                        desc = d in ("Desc", "Asc + Desc")
-                        notes = get_full_fretboard_arpeggio(item["chord_root"], item["arp_name"])
-                        seg = generate_scale_audio(notes, tone=tone, note_duration_ms=note_ms,
-                                                   ascending=asc, descending=desc, root_to_root=True,
-                                                   stop_at_high_e_root=True)
-                        segments.append(seg)
-                    import numpy as np
-                    audio = np.concatenate(segments)
-                    pos_num = getattr(self, "_arp_prog_pos_var", None)
-                    position_num = int(pos_num.get()) if pos_num else 1
-                    title = getattr(self, "_current_prog_title", "")
-                    path = export_scale_arp_progression_video(
-                        items=self._current_arp_prog_items,
-                        title=title,
-                        audio_data=audio,
-                        output_path=out_path,
-                        strip_render_fn=render_arpeggio_progression_strip,
-                        position_num=position_num,
-                        item_duration_ms=item_dur_ms,
-                        portrait=portrait,
-                        tab_img=tab_img,
-                    )
-
-                else:
-                    self._set_status("Nothing to export — generate a diagram first")
-                    return
-
-                if path:
-                    self._set_status(f"Video saved: {path}")
-                else:
-                    self._set_status("Video export failed — is ffmpeg installed?")
-
-            except Exception as e:
-                self._set_status(f"Video export error: {e}")
-            finally:
-                self.after(0, self._hide_progress)
-
-        threading.Thread(target=_run, daemon=True).start()
 
     # ── Keyboard helpers ────────────────────────────────────
 
@@ -3492,14 +2800,6 @@ class DiagramStudioApp(ctk.CTk):
 
     # ── History ─────────────────────────────────────────────
 
-    def _record_history(self, snapshot: dict):
-        """Push a snapshot onto the history stack and refresh the panel."""
-        # Avoid duplicate consecutive entries
-        if self._history and self._history[0].get("label") == snapshot.get("label"):
-            return
-        self._history.insert(0, snapshot)
-        self._history = self._history[:self._MAX_HISTORY]
-        self._refresh_history_panel()
 
     def _refresh_history_panel(self):
         """Rebuild the recent-history list widgets."""
@@ -3522,43 +2822,8 @@ class DiagramStudioApp(ctk.CTk):
                 command=lambda s=snap: self._restore_snapshot(s),
             ).pack(fill="x")
 
-    def _snapshot(self):
-        """Capture current diagram state as a restorable dict."""
-        mode = self.mode_var.get()
-        if mode == "Chord":
-            return {
-                "label": self._current_name or "Chord",
-                "mode": "Chord",
-                "root": self.root_var.get(),
-                "quality": self.quality_var.get(),
-                "voicing": self.voicing_var.get(),
-            }
-        elif mode == "Scale":
-            return {
-                "label": self._current_name.replace("_", " ") or "Scale",
-                "mode": "Scale",
-                "root": self.scale_root_var.get(),
-                "scale": self.scale_type_var.get(),
-                "view": self.scale_view_var.get(),
-            }
-        elif mode == "Arpeggio":
-            return {
-                "label": self._current_name.replace("_", " ") or "Arpeggio",
-                "mode": "Arpeggio",
-                "root": self.arp_root_var.get(),
-                "arp_type": self.arp_type_var.get(),
-                "view": self.arp_view_var.get(),
-            }
-        else:
-            return {
-                "label": self._current_prog_title or "Progression",
-                "mode": "Progression",
-                "root": self.prog_root_var.get(),
-                "prog_name": self.prog_name_var.get(),
-                "prog_custom": self.prog_custom_var.get(),
-            }
 
-    def _restore_snapshot(self, snap: dict):
+    def _restore_legacy_snapshot(self, snap: dict):
         """Restore UI state from a history/favorite snapshot."""
         mode = snap.get("mode", "Chord")
         self._set_mode(mode)
@@ -3593,595 +2858,43 @@ class DiagramStudioApp(ctk.CTk):
     #  CHORD IDENTIFIER
     # ══════════════════════════════════════════════════════════
 
-    def _build_chord_identifier_panel(self):
-        """Build the interactive chord identifier panel (lives in preview_frame)."""
-        self.ci_panel = ctk.CTkFrame(
-            self.preview_frame, fg_color=config.HEX_NAVY_DEEP, corner_radius=0,
-        )
-        # Not packed yet — _set_mode controls visibility
-
-        # ── Chord name display ────────────────────────────
-        name_frame = ctk.CTkFrame(self.ci_panel, fg_color="transparent")
-        name_frame.pack(pady=(18, 6))
-
-        ctk.CTkLabel(
-            name_frame, text="DETECTED CHORD",
-            font=("Arial", 9, "bold"), text_color="#8fa3bf",
-        ).pack()
-
-        _bebas = (
-            ("Bebas Neue", 52) if os.path.exists(str(config.FONT_DIR / config.FONT_DISPLAY))
-            else ("Arial", 38, "bold")
-        )
-        self._ci_chord_name_label = ctk.CTkLabel(
-            name_frame, text="—", font=_bebas, text_color=config.HEX_GOLD,
-        )
-        self._ci_chord_name_label.pack()
-
-        # ── Diagram image label (interactive fretboard) ───
-        img_outer = ctk.CTkFrame(
-            self.ci_panel,
-            fg_color=config.HEX_NAVY_MID,
-            corner_radius=16,
-            border_color=config.HEX_GOLD,
-            border_width=1,
-        )
-        img_outer.pack(padx=24, pady=8)
-
-        self._ci_img_label = tk.Label(
-            img_outer,
-            bg=config.HEX_NAVY_MID,
-            cursor="crosshair",
-            bd=0,
-            relief="flat",
-        )
-        self._ci_img_label.pack(padx=14, pady=14)
-        self._ci_img_label.bind("<ButtonPress-1>", self._ci_on_click)
-        self._ci_layout: dict = {}   # populated on each render
-
-        # ── Audio buttons ─────────────────────────────────
-        audio_row = ctk.CTkFrame(self.ci_panel, fg_color="transparent")
-        audio_row.pack(pady=(4, 4))
-
-        ctk.CTkButton(
-            audio_row, text="▶  Play", width=110, height=34,
-            fg_color=config.HEX_GOLD, text_color=config.HEX_NAVY_DEEP,
-            hover_color=config.HEX_GOLD_BRIGHT, font=("Arial", 12, "bold"),
-            command=self._ci_play_audio,
-        ).pack(side="left", padx=(0, 6))
-
-        ctk.CTkButton(
-            audio_row, text="■  Stop", width=90, height=34,
-            fg_color=config.HEX_NAVY_LIGHT, text_color=config.HEX_CREAM,
-            hover_color="#8b2222", font=("Arial", 12),
-            command=self._ci_stop_audio,
-        ).pack(side="left")
-
-        # ── Instructions ──────────────────────────────────
-        ctk.CTkLabel(
-            self.ci_panel,
-            text="Click frets to place/remove fingers  •  Click above nut to toggle O / X",
-            font=("Arial", 10), text_color="#6a8ab8",
-        ).pack(pady=(4, 10))
 
     # ── Chord detection ───────────────────────────────────────
 
-    def _ci_sounding_notes(self):
-        """Return list of {string, midi, pc} for non-muted strings."""
-        tuning = list(_CI_TUNING6)
-        while len(tuning) < self._ci_strings:
-            tuning.append(40)
-        out = []
-        for s in range(1, self._ci_strings + 1):
-            f = next((f for f in self._ci_fingers if f["string"] == s), None)
-            om = self._ci_open_muted[s - 1] if s - 1 < len(self._ci_open_muted) else "O"
-            if f:
-                midi = tuning[s - 1] + f["fret"]
-                out.append({"string": s, "midi": midi, "pc": midi % 12})
-            elif om == "X":
-                continue
-            else:
-                midi = tuning[s - 1]
-                out.append({"string": s, "midi": midi, "pc": midi % 12})
-        return out
 
-    def _ci_detect_chord(self):
-        """Detect chord name from current finger placements."""
-        snd = self._ci_sounding_notes()
-        if not snd:
-            return "—"
-        pcs  = list(dict.fromkeys(n["pc"] for n in snd))
-        bass = min(snd, key=lambda n: n["midi"])
-        best = None
 
-        for root_pc in pcs:
-            iset = set((pc - root_pc) % 12 for pc in pcs)
-            for p_name, p_ints, p_score in _CI_PATTERNS:
-                pat = set(p_ints)
-                if not pat.issubset(iset):
-                    continue
-                s     = 100 - (len(iset) - len(pat)) * 6
-                boost = 6 if bass["pc"] == root_pc else 0
-                ext   = ""
-                if "7" not in p_name:
-                    if 2 in iset:
-                        ext = "add9"
-                    elif 9 in iset and p_name not in ("6", "m6"):
-                        ext = "6"
-                    elif 11 in iset and p_name != "maj7":
-                        ext = "maj7"
-                    elif 10 in iset and p_name != "7":
-                        ext = "7"
-                chord_name = _CI_NOTES[root_pc] + p_name + ext
-                score = p_score + s + boost
-                if best is None or score > best[0]:
-                    best = (score, root_pc, chord_name)
-
-        if best is None:
-            return "-".join(_CI_NOTES[pc] for pc in pcs)
-        _, root_pc, chord_name = best
-        if _CI_NOTES[bass["pc"]] != _CI_NOTES[root_pc]:
-            return f"{chord_name}/{_CI_NOTES[bass['pc']]}"
-        return chord_name
-
-    def _ci_get_root_pc(self, snd):
-        """Return the root pitch class for the current sounding notes (for dot highlighting)."""
-        pcs  = list(dict.fromkeys(n["pc"] for n in snd))
-        bass = min(snd, key=lambda n: n["midi"])
-        best = None
-        for root_pc in pcs:
-            iset = set((pc - root_pc) % 12 for pc in pcs)
-            for p_name, p_ints, p_score in _CI_PATTERNS:
-                pat = set(p_ints)
-                if not pat.issubset(iset):
-                    continue
-                score = p_score + 100 - (len(iset) - len(pat)) * 6 + (6 if bass["pc"] == root_pc else 0)
-                if best is None or score > best[0]:
-                    best = (score, root_pc)
-        return best[1] if best else None
 
     # ── Premium PIL rendering ─────────────────────────────────
 
-    def _ci_render(self):
-        """Re-render the diagram image and update display + chord name label."""
-        if not hasattr(self, "_ci_img_label") or self._ci_img_label is None:
-            return
 
-        img      = self._ci_render_premium_pil()
-        max_w    = 460
-        max_h    = 660
-        scale    = min(max_w / img.width, max_h / img.height, 1.0)
-        dw       = max(int(img.width  * scale), 80)
-        dh       = max(int(img.height * scale), 80)
-        display  = img.resize((dw, dh), Image.Resampling.LANCZOS)
-        photo    = ImageTk.PhotoImage(display)
-
-        self._ci_img_label.configure(image=photo)
-        self._ci_img_label.image = photo   # keep reference
-
-        # Store display scale so click handler can map back to PIL coords
-        if self._ci_layout:
-            self._ci_layout["display_w"] = dw
-            self._ci_layout["display_h"] = dh
-
-        detected = self._ci_detect_chord()
-        self._ci_chord_name_label.configure(text=detected)
-
-    def _ci_render_premium_pil(self, transparent=False):
-        """Render the CI fretboard as a premium RGBA/RGB PIL Image matching the app style."""
-        ns = self._ci_strings
-        nf = self._ci_frets_visible
-        sf = self._ci_start_fret
-        show_names = self._ci_show_names_var.get() if hasattr(self, "_ci_show_names_var") else True
-        hide_pos   = self._ci_hide_pos_var.get()   if hasattr(self, "_ci_hide_pos_var")   else False
-        show_marks = self._ci_show_markers_var.get() if hasattr(self, "_ci_show_markers_var") else True
-
-        W, H = 420, 600
-
-        # ── Base image with gradient background ─────────
-        if transparent:
-            img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        else:
-            img  = Image.new("RGBA", (W, H), config.NAVY_MID + (255,))
-            img  = apply_background_gradient(img)
-        draw = ImageDraw.Draw(img)
-
-        # ── Layout ─────────────────────────────────────
-        margin_top    = int(H * 0.17)
-        margin_bottom = int(H * 0.16)
-        margin_left   = int(W * 0.18)
-        margin_right  = int(W * 0.12)
-
-        grid_x = margin_left
-        grid_y = margin_top
-        grid_w = W - margin_left - margin_right
-        grid_h = H - margin_top  - margin_bottom
-
-        string_spacing = grid_w / max(ns - 1, 1)
-        fret_spacing   = grid_h / nf
-        marker_y       = grid_y - int(H * 0.05)   # O/X symbols Y centre
-
-        # ── Fonts ──────────────────────────────────────
-        from PIL import ImageFont as _IFont
-        def _lf(fname, size):
-            p = config.get_font_path(fname)
-            if p:
-                try:
-                    return _IFont.truetype(p, size)
-                except Exception:
-                    pass
-            return _IFont.load_default()
-
-        font_title  = _lf(config.FONT_DISPLAY,  int(H * 0.086))
-        font_label  = _lf(config.FONT_BODY,      int(H * 0.030))
-        font_dot    = _lf(config.FONT_BODY_BOLD, int(H * 0.032))
-        font_wm     = _lf(config.FONT_BODY,      max(int(W * 0.025), 10))
-
-        # ── Detected chord name at top ──────────────────
-        detected = self._ci_detect_chord()
-        display_name = detected if detected != "—" else "—"
-        bbox = draw.textbbox((0, 0), display_name, font=font_title)
-        tw   = bbox[2] - bbox[0]
-        draw.text((W / 2 - tw / 2, int(H * 0.025)), display_name,
-                  fill=config.COLOR_LABEL + (255,), font=font_title)
-
-        # ── Wood-grain fretboard rect (only when not transparent) ──
-        pad_fb = int(W * 0.02)
-        if not transparent:
-            img = draw_fretboard_rect(
-                img,
-                grid_x - pad_fb, grid_y - int(H * 0.01),
-                grid_w + pad_fb * 2, grid_h + int(H * 0.02),
-            )
-        draw = ImageDraw.Draw(img)
-
-        # ── Fret inlay dots ────────────────────────────
-        if show_marks:
-            draw_inlay_dots_chord(draw, grid_x, grid_y, grid_w, fret_spacing, sf, nf)
-
-        # ── Nut / position label ───────────────────────
-        if sf == 1:
-            draw_metallic_fret_h(draw, grid_x - 4, grid_x + grid_w + 4, grid_y, is_nut=True)
-        elif not hide_pos:
-            draw.text((grid_x - int(W * 0.09), grid_y + fret_spacing * 0.5),
-                      f"{sf}fr", fill=config.COLOR_LABEL + (255,), font=font_label)
-
-        # ── Remaining fret wires ───────────────────────
-        for i in range(nf + 1):
-            draw_metallic_fret_h(draw, grid_x, grid_x + grid_w, grid_y + i * fret_spacing)
-
-        # ── Strings ────────────────────────────────────
-        # PIL index 0 = low-E (left), ns-1 = high-e (right)
-        # CI string 6 → PIL idx 0 (low-E), CI string 1 → PIL idx ns-1 (high-e)
-        for i in range(ns):
-            draw_string_v(draw, int(grid_x + i * string_spacing),
-                          grid_y, grid_y + grid_h, i)
-
-        # ── O / X markers above nut ────────────────────
-        lw   = max(int(W * 0.004), 1)
-        fmap = {f["string"]: f for f in self._ci_fingers}
-        for s in range(1, ns + 1):
-            if s in fmap:
-                continue
-            pil_idx = ns - s   # CI s=1→pil ns-1 (right), CI s=6→pil 0 (left)
-            x       = int(grid_x + pil_idx * string_spacing)
-            om      = self._ci_open_muted[s - 1] if s - 1 < len(self._ci_open_muted) else "O"
-            if om == "X":
-                sz = int(H * 0.020)
-                draw.line([(x - sz, marker_y - sz), (x + sz, marker_y + sz)],
-                          fill=config.COLOR_MUTED + (255,), width=lw + 2)
-                draw.line([(x - sz, marker_y + sz), (x + sz, marker_y - sz)],
-                          fill=config.COLOR_MUTED + (255,), width=lw + 2)
-            else:
-                sz = int(H * 0.018)
-                draw.ellipse([x - sz, marker_y - sz, x + sz, marker_y + sz],
-                             outline=config.COLOR_OPEN + (255,), width=lw + 2)
-
-        # ── Finger dots (3-D with shadow) ──────────────
-        dot_r        = int(min(string_spacing, fret_spacing) * 0.34)
-        shadow_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        dot_layer    = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        s_draw       = ImageDraw.Draw(shadow_layer)
-        d_draw       = ImageDraw.Draw(dot_layer)
-
-        snd            = self._ci_sounding_notes()
-        detected_root  = self._ci_get_root_pc(snd) if snd else None
-
-        for f in self._ci_fingers:
-            fi = f["fret"] - sf + 1
-            if fi < 1 or fi > nf:
-                continue
-            pil_idx = ns - f["string"]
-            cx = int(grid_x + pil_idx * string_spacing)
-            cy = int(grid_y + (fi - 0.5) * fret_spacing)
-            midi     = _CI_TUNING6[f["string"] - 1] + f["fret"]
-            is_root  = (detected_root is not None and midi % 12 == detected_root)
-            draw_note_dot_3d(s_draw, d_draw, cx, cy, dot_r, is_root, "", None)
-
-        img  = Image.alpha_composite(img, shadow_layer)
-        img  = Image.alpha_composite(img, dot_layer)
-        draw = ImageDraw.Draw(img)
-
-        # ── String name circles ────────────────────────
-        if show_names:
-            name_labels = ["E", "A", "D", "G", "B", "e"]
-            circle_y    = int(grid_y + grid_h + int(H * 0.042))
-            r_circle    = int(H * 0.026)
-            for i in range(ns):
-                lbl = name_labels[i] if i < len(name_labels) else str(i + 1)
-                draw_string_circle(draw, int(grid_x + i * string_spacing),
-                                   circle_y, r_circle, lbl, font_label)
-
-        # ── Decorative border + watermark (only when not transparent) ──
-        if not transparent:
-            img = draw_decorative_border(img)
-        img = draw_watermark_gold(img, font_wm)
-
-        # ── Store layout metrics for click mapping ──────
-        self._ci_layout = {
-            "W": W, "H": H,
-            "grid_x": grid_x, "grid_y": grid_y,
-            "grid_w": grid_w, "grid_h": grid_h,
-            "string_spacing": string_spacing,
-            "fret_spacing":   fret_spacing,
-            "marker_y":       marker_y,
-            "marker_half":    int(H * 0.028),
-            "ns": ns, "nf": nf, "sf": sf,
-        }
-
-        return img if transparent else img.convert("RGB")
 
     # ── Click handling ────────────────────────────────────────
 
-    def _ci_on_click(self, event):
-        """Handle click on the diagram image label — map pixels to CI state."""
-        L = self._ci_layout
-        if not L:
-            return
 
-        # Map display-pixel coords → PIL-image coords
-        W, H   = L["W"], L["H"]
-        lw     = self._ci_img_label.winfo_width()
-        lh     = self._ci_img_label.winfo_height()
-        scale_x = lw / W if lw > 0 else 1.0
-        scale_y = lh / H if lh > 0 else 1.0
 
-        px = event.x / scale_x
-        py = event.y / scale_y
-
-        grid_x  = L["grid_x"];  grid_y  = L["grid_y"]
-        grid_w  = L["grid_w"];  grid_h  = L["grid_h"]
-        ss      = L["string_spacing"]
-        fs      = L["fret_spacing"]
-        ns      = L["ns"];  nf = L["nf"];  sf = L["sf"]
-        marker_y     = L["marker_y"]
-        marker_half  = L["marker_half"]
-
-        # Must be within horizontal string range
-        if px < grid_x - ss * 0.45 or px > grid_x + grid_w + ss * 0.45:
-            return
-
-        pil_idx = round((px - grid_x) / ss)
-        pil_idx = max(0, min(ns - 1, pil_idx))
-        ci_s    = ns - pil_idx   # PIL 0=low-E → CI 6, PIL ns-1=high-e → CI 1
-
-        # O/X zone: above the nut area
-        if marker_y - marker_half <= py <= grid_y + 2:
-            self._ci_toggle_ox(ci_s)
-            return
-
-        # Grid zone: within fret cells
-        if grid_y <= py <= grid_y + grid_h:
-            fret_rel = int((py - grid_y) / fs)
-            fret_rel = max(0, min(nf - 1, fret_rel))
-            self._ci_toggle_finger(ci_s, sf + fret_rel)
-            return
-
-    def _ci_toggle_ox(self, string):
-        """Cycle O → X → O for a string (and remove any finger on it)."""
-        idx = string - 1
-        if idx < 0 or idx >= len(self._ci_open_muted):
-            return
-        # Remove finger if present
-        self._ci_fingers = [f for f in self._ci_fingers if f["string"] != string]
-        self._ci_open_muted[idx] = "X" if self._ci_open_muted[idx] == "O" else "O"
-        self._ci_render()
-
-    def _ci_toggle_finger(self, string, fret):
-        """Place finger at (string, fret) or remove if already there."""
-        existing = next((f for f in self._ci_fingers
-                         if f["string"] == string and f["fret"] == fret), None)
-        if existing:
-            self._ci_fingers.remove(existing)
-        else:
-            # Remove any other finger on same string first
-            self._ci_fingers = [f for f in self._ci_fingers if f["string"] != string]
-            # Reset that string to Open when a finger is placed
-            if string - 1 < len(self._ci_open_muted):
-                self._ci_open_muted[string - 1] = "O"
-            self._ci_fingers.append({"string": string, "fret": fret})
-        self._ci_render()
 
     # ── Control callbacks ─────────────────────────────────────
 
-    def _ci_update_from_vars(self):
-        """Sync CI state from UI vars and re-render."""
-        try:
-            sf = int(self._ci_start_fret_var.get())
-            if 1 <= sf <= 20:
-                self._ci_start_fret = sf
-        except (ValueError, AttributeError):
-            pass
-        try:
-            nf = int(self._ci_frets_var.get())
-            if 3 <= nf <= 12:
-                self._ci_frets_visible = nf
-        except (ValueError, AttributeError):
-            pass
-        try:
-            ns = int(self._ci_strings_var.get())
-            if 4 <= ns <= 8:
-                if ns != self._ci_strings:
-                    self._ci_strings = ns
-                    old = self._ci_open_muted[:]
-                    self._ci_open_muted = ["O"] * ns
-                    for i in range(min(len(old), ns)):
-                        self._ci_open_muted[i] = old[i]
-                    self._ci_fingers = [f for f in self._ci_fingers
-                                        if 1 <= f["string"] <= ns]
-        except (ValueError, AttributeError):
-            pass
-        self._ci_render()
 
-    def _ci_set_orientation(self, mode):
-        self._ci_orientation = mode
-        self._ci_render()
 
-    def _ci_clear(self):
-        """Clear all fingers; reset all strings to Open."""
-        self._ci_fingers    = []
-        self._ci_open_muted = ["O"] * self._ci_strings
-        self._ci_render()
 
-    def _ci_reset(self):
-        """Reset everything to default state."""
-        self._ci_fingers       = []
-        self._ci_strings       = 6
-        self._ci_frets_visible = 5
-        self._ci_start_fret    = 1
-        self._ci_open_muted    = ["O"] * 6
-        if hasattr(self, "_ci_title_var"):    self._ci_title_var.set("")
-        if hasattr(self, "_ci_start_fret_var"): self._ci_start_fret_var.set("1")
-        if hasattr(self, "_ci_frets_var"):    self._ci_frets_var.set("5")
-        if hasattr(self, "_ci_strings_var"):  self._ci_strings_var.set("6")
-        if hasattr(self, "_ci_hide_pos_var"):     self._ci_hide_pos_var.set(False)
-        if hasattr(self, "_ci_show_markers_var"): self._ci_show_markers_var.set(True)
-        if hasattr(self, "_ci_show_names_var"):   self._ci_show_names_var.set(True)
-        self._ci_render()
 
     # ── PNG export ────────────────────────────────────────────
 
     # ── Audio ─────────────────────────────────────────────────
 
-    def _ci_to_audio_frets(self):
-        """Convert CI state to the 6-element [low-E…high-e] frets list for generate_chord_audio."""
-        audio_frets = [-1] * 6   # default: all muted
-        for s in range(1, min(self._ci_strings + 1, 7)):
-            audio_idx = 6 - s    # CI s=6(low-E) → audio 0, CI s=1(high-e) → audio 5
-            f  = next((ff for ff in self._ci_fingers if ff["string"] == s), None)
-            om = self._ci_open_muted[s - 1] if s - 1 < len(self._ci_open_muted) else "O"
-            if f:
-                audio_frets[audio_idx] = f["fret"]
-            elif om == "O":
-                audio_frets[audio_idx] = 0
-        return audio_frets
 
-    def _ci_play_audio(self):
-        """Play audio for the current chord identifier state."""
-        tone   = self.tone_var.get() if hasattr(self, "tone_var") else "acoustic"
-        vol    = self.volume_var.get() if hasattr(self, "volume_var") else 0.8
-        raw    = self.play_style_var.get().lower() if hasattr(self, "play_style_var") else "strum down"
-        style_map = {
-            "strum down": ("strum", "down"),
-            "strum up":   ("strum", "up"),
-            "arpeggiate": ("arpeggio", "down"),
-            "arpeggiate + strum": ("arpeggio_strum", "down"),
-        }
-        play_style, strum_dir = style_map.get(raw, ("strum", "down"))
-        frets = self._ci_to_audio_frets()
 
-        def _play():
-            self._set_status("Playing...")
-            self.after(0, lambda: self._show_progress(indeterminate=True))
-            try:
-                audio = generate_chord_audio(
-                    frets, tone=tone, duration=2.0,
-                    play_style=play_style, strum_direction=strum_dir,
-                )
-                play_audio(audio, volume=vol)
-            except Exception as e:
-                self._set_status(f"Playback error: {e}")
-            finally:
-                self.after(0, self._hide_progress)
-                if self.status_label.cget("text") == "Playing...":
-                    self.after(0, lambda: self._set_status(""))
-
-        threading.Thread(target=_play, daemon=True).start()
-
-    def _ci_stop_audio(self):
-        """Stop any playing audio."""
-        stop_audio()
-        self._set_status("Stopped")
 
     # ── PNG Export ────────────────────────────────────────────
 
-    def _ci_get_export_image(self):
-        """Return RGBA PIL image for CI export (transparent when BG = transparent)."""
-        bg = getattr(self, "_ci_bg_var", None)
-        use_transparent = (bg is None or bg.get() == "transparent")
-        return self._ci_render_premium_pil(transparent=use_transparent)
 
-    def _ci_save_png_as(self):
-        """Open Save As dialog then export the chord identifier diagram."""
-        res = getattr(self, "_ci_res_var", None)
-        bg  = getattr(self, "_ci_bg_var",  None)
-        res_val = res.get() if res else "1080p"
-        bg_val  = bg.get()  if bg  else "transparent"
 
-        detected = self._ci_detect_chord()
-        name = detected if detected not in ("—", "-") else "chord-identifier"
-        default_name = f"{name}_{res_val}_{bg_val}.png"
 
-        path = filedialog.asksaveasfilename(
-            title="Save Chord Diagram As",
-            initialdir=str(config.OUTPUT_DIR),
-            initialfile=default_name,
-            defaultextension=".png",
-            filetypes=[("PNG image", "*.png"), ("All files", "*.*")],
-        )
-        if not path:
-            return
-        try:
-            img = self._ci_get_export_image()
-            saved = export_diagram(img, path, res_val, bg_val)
-            self._set_status(f"Saved: {Path(saved).name}")
-        except Exception as e:
-            self._set_status(f"Export failed: {e}")
-
-    def _ci_export_all(self):
-        """Export the chord identifier diagram in all resolutions and backgrounds."""
-        try:
-            img = self._ci_render_premium_pil(transparent=True)
-            detected = self._ci_detect_chord()
-            name = detected if detected not in ("—", "-") else "chord-identifier"
-            output_dir = config.OUTPUT_DIR / "chords"
-            paths = batch_export(img, name, output_dir)
-            self._set_status(f"Exported {len(paths)} files to {output_dir}")
-        except Exception as e:
-            self._set_status(f"Export failed: {e}")
-
-    def _ci_export_png(self):
-        """Legacy entry point — delegate to Save As dialog."""
-        self._ci_save_png_as()
 
     # ── Favorites ────────────────────────────────────────────
 
-    def _load_favorites(self) -> list:
-        try:
-            if self._favorites_file.exists():
-                return json.loads(self._favorites_file.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-        return []
 
-    def _save_favorites(self):
-        try:
-            self._favorites_file.parent.mkdir(parents=True, exist_ok=True)
-            self._favorites_file.write_text(
-                json.dumps(self._favorites, indent=2), encoding="utf-8"
-            )
-        except Exception as e:
-            self._set_status(f"Could not save favorites: {e}")
 
     def _add_favorite(self):
         if not self._current_name:
@@ -4190,7 +2903,7 @@ class DiagramStudioApp(ctk.CTk):
         snap = self._snapshot()
         # Don't duplicate
         for fav in self._favorites:
-            if fav.get("label") == snap.get("label") and fav.get("mode") == snap.get("mode"):
+            if fav == snap:
                 self._set_status(f"Already in favorites: {snap['label']}")
                 return
         self._favorites.insert(0, snap)
@@ -4200,7 +2913,7 @@ class DiagramStudioApp(ctk.CTk):
 
     def _remove_favorite(self, snap: dict):
         self._favorites = [f for f in self._favorites
-                           if not (f.get("label") == snap.get("label") and f.get("mode") == snap.get("mode"))]
+                           if f != snap]
         self._save_favorites()
         self._refresh_favorites_panel()
 
@@ -4232,9 +2945,14 @@ class DiagramStudioApp(ctk.CTk):
 
     # ── Status ─────────────────────────────────────────────
 
-    def _set_status(self, text):
-        """Update the status bar text."""
-        self.status_label.configure(text=text)
+
+
+def _document_property(name):
+    return property(lambda self: getattr(self.document, name),
+                    lambda self, value: setattr(self.document, name, value))
+
+for _field in CurrentDocument.__dataclass_fields__:
+    setattr(DiagramStudioApp, '_current_'+_field, _document_property(_field))
 
 
 def run():

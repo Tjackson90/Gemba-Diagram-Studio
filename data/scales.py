@@ -63,8 +63,9 @@ SCALE_NAMES = list(SCALE_INTERVALS.keys())
 try:
     from data.custom_library import load_into_scale_dicts as _load_custom
     _load_custom(SCALE_INTERVALS, SCALE_NAMES)
-except Exception:
-    pass
+except (ValueError, OSError) as exc:
+    import warnings
+    warnings.warn(f"Custom library was not loaded: {exc}", RuntimeWarning)
 
 
 def get_scale_notes_set(root_semitone, scale_name):
@@ -92,7 +93,7 @@ def get_full_fretboard_scale(root_name, scale_name, num_frets=15):
 
     result = []
     for string_idx in range(6):
-        open_midi = STANDARD_TUNING_MIDI[string_idx]
+        open_midi = get_tuning()[string_idx]
         for fret in range(num_frets + 1):
             midi = open_midi + fret
             semi = midi % 12
@@ -107,83 +108,24 @@ def get_full_fretboard_scale(root_name, scale_name, num_frets=15):
                     "note_name": name,
                     "is_root": (semi == root_semi),
                 })
+    labels = dict(zip(SCALE_INTERVALS[scale_name], get_scale_tone_names(root_name, scale_name)))
+    for note in result:
+        note["note_name"] = labels[(note["semitone"] - root_semi) % 12]
     return result
 
 
 def get_caged_positions(root_name, scale_name, num_frets=15):
+    """Five pentatonic patterns, or exploratory fret windows for other scales.
+
+    The historic function name remains for callers. Non-pentatonic windows
+    describe available tones rather than promising a standard CAGED fingering.
     """
-    Generate 5 CAGED box positions for a scale.
+    from data.instrument import settings
+    from data.positions import pentatonic_positions, fret_windows
+    if scale_name in ('Pentatonic Minor', 'Pentatonic Major') and settings()['tuning'] == 'Standard':
+        return pentatonic_positions(root_name, scale_name, get_full_fretboard_scale)
+    return fret_windows(root_name, scale_name, get_full_fretboard_scale)
 
-    Positions are anchored using standard CAGED spacing: the five box windows
-    start at semitone offsets [0, 2, 5, 7, 10] above the root fret on the low
-    E string.  Each box covers a strict 4-fret window (start_fret to
-    start_fret + 4), which is the standard single-position playing range.
-
-    Returns list of dicts:
-        {
-            "position_num": 1-5,
-            "start_fret": lowest fret in the box,
-            "end_fret": highest fret in the box,
-            "notes": [{string, fret, semitone, note_name, is_root}, ...]
-        }
-    """
-    if "/" in root_name:
-        root_name = root_name.split("/")[0]
-    root_semi = note_name_to_semitone(root_name)
-
-    intervals = SCALE_INTERVALS.get(scale_name, [])
-    if not intervals:
-        return []
-
-    # ── Root fret on low E (open E = MIDI 40, semitone 4) ──────────
-    open_e_semi = 4
-    root_fret_on_low_e = (root_semi - open_e_semi) % 12
-    # Result is always 0-11; fret 0 only when root IS E (semitone 4).
-
-    # ── CAGED box start offsets from root fret ──────────────────────
-    # These correspond to the E, D, C, A, G shapes in CAGED order.
-    # Each offset is a semitone distance on the low E string from the root.
-    CAGED_OFFSETS = [0, 2, 5, 7, 10]
-
-    # Fetch enough of the fretboard to cover all 5 boxes.
-    # Highest possible box end = root_fret(11) + offset(10) + window(4) = 25.
-    search_frets = max(num_frets, root_fret_on_low_e + 10 + 4)
-    all_notes = get_full_fretboard_scale(root_name, scale_name, search_frets)
-
-    positions = []
-    for i, offset in enumerate(CAGED_OFFSETS):
-        box_start = root_fret_on_low_e + offset
-        box_end   = box_start + 4
-
-        # All scale notes within the strict 4-fret window
-        box_notes = [n for n in all_notes if box_start <= n["fret"] <= box_end]
-
-        # Grace-fret: if any string is completely empty inside the window,
-        # allow the nearest note one fret outside the window on that string.
-        strings_covered = {n["string"] for n in box_notes}
-        for n in all_notes:
-            if n["string"] not in strings_covered:
-                if box_start - 1 <= n["fret"] <= box_end + 1:
-                    box_notes.append(n)
-                    strings_covered.add(n["string"])
-
-        # Include open strings when the box is near the nut
-        if box_start <= 2:
-            for n in all_notes:
-                if n["fret"] == 0 and n not in box_notes:
-                    box_notes.append(n)
-
-        positions.append({
-            "position_num": i + 1,
-            "start_fret": box_start,
-            "end_fret": box_end,
-            "notes": sorted(box_notes, key=lambda n: (n["string"], n["fret"])),
-        })
-
-    return positions
-
-
-# ── Three Notes Per String ───────────────────────────────────────────
 
 def get_three_note_per_string_scale(root_name, scale_name, position=1):
     """
@@ -216,7 +158,7 @@ def get_three_note_per_string_scale(root_name, scale_name, position=1):
     prefer_flat = root_semi in {1, 3, 6, 8, 10}
 
     # Low E open MIDI = 40
-    low_e_open = STANDARD_TUNING_MIDI[0]  # 40
+    low_e_open = get_tuning()[0]  # 40
 
     # Find the first occurrence of the root on the low E string (fret 0–11)
     root_fret_base = (root_semi - low_e_open % 12) % 12
@@ -245,7 +187,7 @@ def get_three_note_per_string_scale(root_name, scale_name, position=1):
     midi_seq_idx = 0
 
     for string_idx in range(6):
-        open_midi = STANDARD_TUNING_MIDI[string_idx]
+        open_midi = get_tuning()[string_idx]
         notes_placed = 0
 
         while notes_placed < 3 and midi_seq_idx < len(all_scale_midi):
@@ -269,6 +211,17 @@ def get_three_note_per_string_scale(root_name, scale_name, position=1):
             notes_placed += 1
             midi_seq_idx += 1
 
+    from data.instrument import settings
+    limit = 24-settings()['capo']
+    if result and max(n['fret'] for n in result)>limit:
+        if min(n['fret'] for n in result)>=12:
+            for note in result:
+                note['fret'] -= 12
+        if max(n['fret'] for n in result)>limit:
+            return []
+    labels = dict(zip(intervals, get_scale_tone_names(root_name, scale_name)))
+    for note in result:
+        note["note_name"] = labels[(note["semitone"]-root_semi)%12]
     return result
 
 
@@ -319,16 +272,9 @@ def get_scale_display_name(root_name, scale_name):
 
 def get_scale_tone_names(root_name, scale_name):
     """Get the note names of all tones in the scale."""
-    if "/" in root_name:
-        root_name = root_name.split("/")[0]
-    root_semi = note_name_to_semitone(root_name)
+    from data.notes import spell_intervals
     intervals = SCALE_INTERVALS.get(scale_name, [])
-    prefer_flat = root_semi in {1, 3, 6, 8, 10}
+    degrees = {'Pentatonic Minor': [0,2,3,4,6], 'Pentatonic Major': [0,1,2,4,5]}.get(scale_name)
+    return spell_intervals(root_name, intervals, degrees)
 
-    from data.notes import FLAT_NAMES, SHARP_NAMES
-    names = []
-    for iv in intervals:
-        semi = (root_semi + iv) % 12
-        name = FLAT_NAMES[semi] if prefer_flat else SHARP_NAMES[semi]
-        names.append(name)
-    return names
+from data.instrument import get_tuning, string_names, string_column

@@ -75,7 +75,7 @@ BARRE_TEMPLATES = {
         "D": {"frets": [-1, -1, 0, 2, 1, 1], "fingers": [0, 0, 1, 3, 2, 2], "root_string": 2},
     },
     "Sus2": {
-        "E": {"frets": [0, 2, 2, -1, 0, 0], "fingers": [1, 3, 4, 0, 1, 1], "root_string": 0},
+        "E": {"frets": [0, 2, 4, -1, 0, 0], "fingers": [1, 2, 4, 0, 1, 1], "root_string": 0},
         "A": {"frets": [-1, 0, 2, 2, 0, 0], "fingers": [0, 1, 3, 4, 1, 1], "root_string": 1},
         "D": {"frets": [-1, -1, 0, 2, 3, 0], "fingers": [0, 0, 1, 3, 4, 1], "root_string": 2},
     },
@@ -88,10 +88,10 @@ BARRE_TEMPLATES = {
         "A": {"frets": [-1, 0, 1, 2, 1, -1], "fingers": [0, 1, 2, 4, 3, 0], "root_string": 1},
     },
     "Aug": {
-        "E": {"frets": [0, 3, 2, 1, 0, -1], "fingers": [1, 4, 3, 2, 1, 0], "root_string": 0},
+        "E": {"frets": [0, -1, 2, 1, 1, 0], "fingers": [1, 0, 4, 2, 3, 1], "root_string": 0},
     },
     "Add9": {
-        "A": {"frets": [-1, 0, 2, 2, 2, 2], "fingers": [0, 1, 2, 3, 3, 3], "root_string": 1},
+        "A": {"frets": [-1, 0, 2, 4, 2, 0], "fingers": [0, 1, 2, 4, 3, 1], "root_string": 1},
     },
     "Power": {
         "E": {"frets": [0, 2, 2, -1, -1, -1], "fingers": [1, 3, 4, 0, 0, 0], "root_string": 0},
@@ -99,19 +99,19 @@ BARRE_TEMPLATES = {
     },
     "9": {
         "E": {"frets": [0, 2, 0, 1, 0, 2], "fingers": [1, 3, 1, 2, 1, 4], "root_string": 0},
-        "A": {"frets": [-1, 0, 2, 0, 2, 2], "fingers": [0, 1, 3, 1, 4, 2], "root_string": 1},
+        "A": {"frets": [-1, 0, 0, 0, 0, -1], "offsets": [-1, 0, -1, 0, 0, -1], "fingers": [0, 2, 1, 3, 4, 0], "root_string": 1},
     },
     "Maj9": {
-        "A": {"frets": [-1, 0, 2, 1, 2, 2], "fingers": [0, 1, 3, 2, 4, 4], "root_string": 1},
+        "A": {"frets": [-1, 0, 0, 1, 0, -1], "offsets": [-1, 0, -1, 1, 0, -1], "fingers": [0, 2, 1, 4, 3, 0], "root_string": 1},
     },
     "Min9": {
-        "A": {"frets": [-1, 0, 2, 0, 1, 2], "fingers": [0, 1, 3, 1, 2, 4], "root_string": 1},
+        "A": {"frets": [-1, 0, 0, 0, 0, -1], "offsets": [-1, 0, -2, 0, 0, -1], "fingers": [0, 2, 1, 3, 4, 0], "root_string": 1},
     },
     "Dim7": {
         "A": {"frets": [-1, 0, 1, 2, 1, 2], "fingers": [0, 1, 2, 4, 3, 4], "root_string": 1},
     },
     "Min7b5": {
-        "A": {"frets": [-1, 0, 1, 2, 1, 0], "fingers": [0, 1, 2, 4, 3, 1], "root_string": 1},
+        "A": {"frets": [-1, 0, 1, 0, 1, -1], "fingers": [0, 1, 2, 1, 3, 0], "root_string": 1},
     },
 }
 # fmt: on
@@ -188,8 +188,7 @@ OPEN_OVERRIDES = {
     ("G", "Power"): [{"frets": [3, 5, 5, -1, -1, -1], "fingers": [1, 3, 4, 0, 0, 0], "label": "G5"}],
 
     # ── 9th ──
-    ("A", "9"):  [{"frets": [-1, 0, 2, 0, 2, 2], "fingers": [0, 0, 2, 0, 3, 4], "label": "Open A9"}],
-    ("D", "9"):  [{"frets": [-1, -1, 0, 2, 1, 2], "fingers": [0, 0, 0, 2, 1, 3], "label": "Open D9"}],
+    ("D", "9"):  [{"frets": [-1, 5, 4, 5, 5, -1], "fingers": [0, 2, 1, 3, 4, 0], "label": "D9 (fifth omitted)"}],
     ("E", "9"):  [{"frets": [0, 2, 0, 1, 0, 2], "fingers": [0, 2, 0, 1, 0, 3], "label": "Open E9"}],
     ("G", "9"):  [{"frets": [3, 0, 0, 0, 0, 1], "fingers": [3, 0, 0, 0, 0, 1], "label": "Open G9"}],
 }
@@ -206,6 +205,9 @@ def _barre_fret_for_root(root_semitone, template):
     root_string = template["root_string"]
     open_semitone = open_notes[root_string]
     barre_fret = (root_semitone - open_semitone) % 12
+    offsets = template.get("offsets", template["frets"])
+    if any(barre_fret + offsets[i] < 0 for i, f in enumerate(template["frets"]) if f != -1):
+        barre_fret += 12
     return barre_fret
 
 
@@ -223,8 +225,9 @@ def _apply_barre_template(template, barre_fret):
         if f == -1:
             frets.append(-1)
         else:
-            frets.append(f + barre_fret)
+            frets.append(template.get("offsets", base_frets)[i] + barre_fret)
 
+    fingers = [finger if fret > 0 else 0 for fret, finger in zip(frets, fingers)]
     return frets, fingers
 
 
@@ -247,8 +250,8 @@ def get_voicings(root_name, quality):
     if open_key in OPEN_OVERRIDES:
         for ov in OPEN_OVERRIDES[open_key]:
             voicings.append({
-                "frets": ov["frets"],
-                "fingers": ov["fingers"],
+                "frets": list(ov["frets"]),
+                "fingers": list(ov["fingers"]),
                 "label": ov.get("label", "Open"),
                 "position": 0,
             })
@@ -288,7 +291,15 @@ def get_voicings(root_name, quality):
             unique.append(v)
 
     # Limit to 4 voicings
-    return unique[:4]
+    from data.instrument import adapt_voicing
+    adapted = []
+    for voicing in unique:
+        try:
+            voicing['frets'], voicing['fingers'] = adapt_voicing(voicing['frets'], voicing['fingers'])
+            adapted.append(voicing)
+        except ValueError:
+            continue
+    return adapted[:4]
 
 
 def get_chord_display_name(root_name, quality):
@@ -340,7 +351,8 @@ def parse_chord_name(name):
         return None, None
 
     # Parse quality from remaining string
-    rest_lower = rest.lower().strip()
+    rest = rest.strip()
+    rest_lower = {"M": "maj", "M7": "maj7", "M9": "maj9"}.get(rest, rest.lower())
 
     quality_map = {
         "": "Major",

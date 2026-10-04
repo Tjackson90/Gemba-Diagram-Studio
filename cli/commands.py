@@ -34,6 +34,8 @@ from data.arpeggios import (
 )
 from diagrams.chord_diagram import render_chord_diagram
 from diagrams.scale_diagram import render_scale_full_fretboard, render_scale_box
+from services.storage import safe_filename
+from services.documents import RENDERERS
 from diagrams.export import export_diagram
 from diagrams.tab_diagram import render_chord_tab, render_scale_tab
 from diagrams.video_export import export_chord_video, export_scale_video, export_progression_video
@@ -60,16 +62,16 @@ def cmd_chord(args):
     root, quality = parse_chord_name(chord_str)
 
     if root is None:
-        print(f"Error: Could not parse chord '{chord_str}'")
+        raise ValueError(f"Error: Could not parse chord '{chord_str}'")
         print(f"Examples: Am7, F#dim, Cmaj7, Dsus4, Bb7")
         return
 
     voicings = get_voicings(root, quality)
     if not voicings:
-        print(f"Error: No voicings found for {root} {quality}")
+        raise ValueError(f"Error: No voicings found for {root} {quality}")
         return
 
-    voicing_idx = min(args.voicing - 1, len(voicings) - 1)
+    voicing_idx = max(0, min(args.voicing - 1, len(voicings) - 1))
     v = voicings[voicing_idx]
     chord_name = get_chord_display_name(root, quality)
     root_semi = note_name_to_semitone(root)
@@ -136,6 +138,7 @@ def cmd_chord(args):
             out = Path(args.output) / "videos" / f"{chord_name}.mp4"
             path = export_chord_video(
                 frets=v["frets"],
+                play_style=play_style,
                 render_fn=render_chord_diagram,
                 render_kwargs=render_kwargs,
                 audio_data=audio,
@@ -163,7 +166,7 @@ def cmd_scale(args):
     scale_name = _normalize_scale_name(args.scale_name)
 
     if scale_name not in SCALE_NAMES:
-        print(f"Error: Unknown scale '{scale_name}'")
+        raise ValueError(f"Error: Unknown scale '{scale_name}'")
         print(f"Available: {', '.join(SCALE_NAMES)}")
         return
 
@@ -173,7 +176,7 @@ def cmd_scale(args):
     print(f"Generating: {display_name}  ({' '.join(interval_labels)})")
 
     bg_color = config.NAVY_DEEP if args.bg == "navy" else None
-    safe_name = display_name.replace(" ", "_").replace("/", "-")
+    safe_name = safe_filename(display_name.replace(" ", "_"))
 
     if args.view == "full":
         notes = get_full_fretboard_scale(root, scale_name, num_frets=15)
@@ -191,7 +194,7 @@ def cmd_scale(args):
         pos_num = args.position
         notes = get_three_note_per_string_scale(root, scale_name, position=pos_num)
         if not notes:
-            print(f"Error: 3NPS position {pos_num} not available for this scale")
+            raise ValueError(f"Error: 3NPS position {pos_num} not available for this scale")
             return
         all_frets = [n["fret"] for n in notes]
         img = render_scale_box(
@@ -209,8 +212,8 @@ def cmd_scale(args):
     else:
         positions = get_caged_positions(root, scale_name)
         pos_num = args.position
-        if pos_num > len(positions):
-            print(f"Error: Only {len(positions)} positions available")
+        if not 1 <= pos_num <= len(positions):
+            raise ValueError(f"Error: Only {len(positions)} positions available")
             return
         pos = positions[pos_num - 1]
         img = render_scale_box(
@@ -253,19 +256,13 @@ def cmd_scale(args):
                     print(f"  MP3 saved: {mp3_path}")
 
         if getattr(args, "video", False):
-            render_kwargs = dict(
-                scale_notes=scale_notes,
-                scale_name=scale_name,
-                root_name=root,
-                bg_color=bg_color,
-                width=1600, height=500,
-                invert=getattr(args, "invert", False),
-            )
+            render_kwargs = dict(img.info['render_spec']['params'])
+            render_kwargs.update(ascending=True, descending=True, root_to_root=root_anchor)
             print("  Rendering video…")
             out = Path(args.output) / "videos" / f"{safe_name}_{view_label}.mp4"
             path = export_scale_video(
                 notes_data=scale_notes,
-                render_fn=render_scale_full_fretboard,
+                render_fn=RENDERERS[img.info['render_spec']['renderer']],
                 render_kwargs=render_kwargs,
                 audio_data=audio,
                 output_path=out,
@@ -309,7 +306,7 @@ def cmd_arpeggio(args):
     arp_name = _normalize_arpeggio_name(args.arpeggio_name)
 
     if arp_name not in ARPEGGIO_NAMES:
-        print(f"Error: Unknown arpeggio '{arp_name}'")
+        raise ValueError(f"Error: Unknown arpeggio '{arp_name}'")
         print(f"Available: {', '.join(ARPEGGIO_NAMES)}")
         return
 
@@ -317,7 +314,7 @@ def cmd_arpeggio(args):
     print(f"Generating: {display_name}")
 
     bg_color = config.NAVY_DEEP if args.bg == "navy" else None
-    safe_name = display_name.replace(" ", "_").replace("/", "-")
+    safe_name = safe_filename(display_name.replace(" ", "_"))
 
     if args.view == "full":
         notes = get_full_fretboard_arpeggio(root, arp_name, num_frets=15)
@@ -334,8 +331,8 @@ def cmd_arpeggio(args):
     else:
         positions = get_arpeggio_positions(root, arp_name)
         pos_num = args.position
-        if pos_num > len(positions):
-            print(f"Error: Only {len(positions)} positions available for this arpeggio")
+        if not 1 <= pos_num <= len(positions):
+            raise ValueError(f"Error: Only {len(positions)} positions available for this arpeggio")
             return
         pos = positions[pos_num - 1]
         img = render_scale_box(
@@ -374,19 +371,13 @@ def cmd_arpeggio(args):
                 print(f"  WAV saved: {wav_path}")
 
         if getattr(args, "video", False):
-            render_kwargs = dict(
-                scale_notes=diagram_notes,
-                scale_name=f"{arp_name} Arpeggio",
-                root_name=root,
-                bg_color=bg_color,
-                width=1600, height=500,
-                invert=getattr(args, "invert", False),
-            )
+            render_kwargs = dict(img.info['render_spec']['params'])
+            render_kwargs.update(ascending=True, descending=True, root_to_root=root_anchor)
             print("  Rendering video…")
             out = Path(args.output) / "videos" / f"{safe_name}_{view_label}.mp4"
             path = export_scale_video(
                 notes_data=diagram_notes,
-                render_fn=render_scale_full_fretboard,
+                render_fn=RENDERERS[img.info['render_spec']['renderer']],
                 render_kwargs=render_kwargs,
                 audio_data=audio,
                 output_path=out,
@@ -417,7 +408,7 @@ def cmd_progression(args):
     root = args.root.split("/")[0]
     mode = args.mode.lower()
     if mode not in ("major", "minor"):
-        print(f"Error: mode must be 'major' or 'minor', got '{mode}'")
+        raise ValueError(f"Error: mode must be 'major' or 'minor', got '{mode}'")
         return
 
     # Resolve progression degrees
@@ -425,7 +416,7 @@ def cmd_progression(args):
     if custom:
         degrees = parse_roman(custom, mode)
         if degrees is None:
-            print(f"Error: Could not parse '{custom}' — use Roman numerals like I-V-vi-IV")
+            raise ValueError(f"Error: Could not parse '{custom}' — use Roman numerals like I-V-vi-IV")
             return
         chords = get_progression_chords(root, mode, degrees)
         prog_name = custom.upper()
@@ -439,7 +430,7 @@ def cmd_progression(args):
                 match = n
                 break
         if match is None:
-            print(f"Error: Unknown progression '{prog_name}'")
+            raise ValueError(f"Error: Unknown progression '{prog_name}'")
             print(f"Available ({mode}): " + ", ".join(names))
             return
         degrees, chords = get_named_progression(root, match, mode)
@@ -495,363 +486,36 @@ def cmd_progression(args):
             print("  Video export failed — is ffmpeg on PATH?")
 
 
-def _batch_chord(line, args, bg_color, note_ms):
-    """Process a single chord line in a batch. Returns True on success."""
-    root, quality = parse_chord_name(line)
-    if not root:
-        return False
-
-    voicings = get_voicings(root, quality)
-    if not voicings:
-        print(f"  Skipping: no voicings for '{line}'")
-        return True  # parsed ok, just no voicings
-
-    v = voicings[0]
-    chord_name = get_chord_display_name(root, quality)
-    root_semi = note_name_to_semitone(root)
-
-    img = render_chord_diagram(
-        frets=v["frets"], fingers=v.get("fingers"),
-        chord_name=chord_name, root_semitone=root_semi,
-        bg_color=bg_color,
-    )
-
-    if args.png:
-        path = export_diagram(
-            img,
-            Path(args.output) / "chords" / f"{chord_name}_{args.res}_{args.bg}.png",
-            args.res, args.bg,
-        )
-        print(f"  PNG: {path}")
-
-    audio = None
-    if args.audio or getattr(args, "video", False):
-        audio = generate_chord_audio(v["frets"], tone=args.tone)
-
-    if args.audio and audio is not None:
-        wav_path = export_wav(audio, Path(args.output) / "audio" / f"{chord_name}.wav")
-        if wav_path:
-            print(f"  WAV: {wav_path}")
-
-    if getattr(args, "video", False) and audio is not None:
-        render_kwargs = dict(
-            frets=v["frets"], fingers=v.get("fingers"),
-            chord_name=chord_name, root_semitone=root_semi,
-            bg_color=bg_color,
-        )
-        out = Path(args.output) / "videos" / f"{chord_name}.mp4"
-        path = export_chord_video(
-            frets=v["frets"],
-            render_fn=render_chord_diagram,
-            render_kwargs=render_kwargs,
-            audio_data=audio,
-            output_path=out,
-        )
-        if path:
-            print(f"  Video: {path}")
-        else:
-            print("  Video export failed — is ffmpeg on PATH?")
-
-    return True
-
-
-def _batch_scale(parts, args, bg_color, note_ms):
-    """Process a 'scale ROOT NAME [--position N] [--view V]' batch line."""
-    # parts: ['scale', 'A', 'pentatonic-minor', ...]
-    if len(parts) < 3:
-        print("  Skipping: scale line needs at least 'scale ROOT NAME'")
-        return
-
-    root = parts[1]
-    # Collect remaining tokens; look for --position and --view flags
-    rest = parts[2:]
-    position = 1
-    view = "full"
-    name_parts = []
-    i = 0
-    while i < len(rest):
-        if rest[i] in ("--position", "-p") and i + 1 < len(rest):
-            try:
-                position = int(rest[i + 1])
-            except ValueError:
-                pass
-            i += 2
-        elif rest[i] in ("--view", "-v") and i + 1 < len(rest):
-            view = rest[i + 1]
-            i += 2
-        else:
-            name_parts.append(rest[i])
-            i += 1
-
-    scale_name = _normalize_scale_name(" ".join(name_parts))
-    if scale_name not in SCALE_NAMES:
-        print(f"  Skipping: unknown scale '{scale_name}'")
-        return
-
-    display_name = get_scale_display_name(root, scale_name)
-    safe_name = display_name.replace(" ", "_").replace("/", "-")
-    print(f"  Scale: {display_name} ({view})")
-
-    if view == "3nps":
-        notes = get_three_note_per_string_scale(root, scale_name, position=position)
-        all_frets = [n["fret"] for n in notes]
-        img = render_scale_box(
-            box_notes=notes,
-            start_fret=max(1, min(all_frets)) if all_frets else 1,
-            end_fret=max(all_frets) if all_frets else 5,
-            scale_name=f"{scale_name} (3NPS)",
-            root_name=root,
-            position_num=position,
-            bg_color=bg_color,
-            width=600, height=800,
-        )
-        view_label = f"3nps{position}"
-        scale_notes = notes
-    elif view == "box":
-        positions = get_caged_positions(root, scale_name)
-        if position > len(positions):
-            print(f"  Skipping: only {len(positions)} positions available")
-            return
-        pos = positions[position - 1]
-        img = render_scale_box(
-            box_notes=pos["notes"],
-            start_fret=pos["start_fret"],
-            end_fret=pos["end_fret"],
-            scale_name=scale_name,
-            root_name=root,
-            position_num=position,
-            bg_color=bg_color,
-            width=600, height=800,
-        )
-        view_label = f"pos{position}"
-        scale_notes = pos["notes"]
-    else:  # full
-        notes = get_full_fretboard_scale(root, scale_name, num_frets=15)
-        img = render_scale_full_fretboard(
-            scale_notes=notes,
-            scale_name=scale_name,
-            root_name=root,
-            bg_color=bg_color,
-            width=1600, height=500,
-        )
-        view_label = "full"
-        scale_notes = notes
-
-    if args.png:
-        path = export_diagram(
-            img,
-            Path(args.output) / "scales" / f"{safe_name}_{view_label}_{args.res}_{args.bg}.png",
-            args.res, args.bg,
-        )
-        print(f"  PNG: {path}")
-
-    audio = None
-    if args.audio or getattr(args, "video", False):
-        audio = generate_scale_audio(
-            scale_notes, tone=args.tone,
-            note_duration_ms=note_ms,
-            ascending=True, descending=True, root_to_root=True,
-        )
-
-    if args.audio and audio is not None:
-        wav_path = export_wav(audio, Path(args.output) / "audio" / f"{safe_name}_{view_label}.wav")
-        if wav_path:
-            print(f"  WAV: {wav_path}")
-
-    if getattr(args, "video", False) and audio is not None:
-        render_fn = render_scale_full_fretboard if view == "full" else render_scale_box
-        if view == "full":
-            render_kwargs = dict(
-                scale_notes=scale_notes, scale_name=scale_name,
-                root_name=root, bg_color=bg_color,
-                width=1600, height=500,
-            )
-        else:
-            pos_data = positions[position - 1] if view == "box" else {"start_fret": min(all_frets), "end_fret": max(all_frets)}
-            render_kwargs = dict(
-                box_notes=scale_notes,
-                start_fret=pos_data["start_fret"],
-                end_fret=pos_data["end_fret"],
-                scale_name=scale_name,
-                root_name=root,
-                position_num=position,
-                bg_color=bg_color,
-                width=600, height=800,
-            )
-        out = Path(args.output) / "videos" / f"{safe_name}_{view_label}.mp4"
-        path = export_scale_video(
-            notes_data=scale_notes,
-            render_fn=render_fn,
-            render_kwargs=render_kwargs,
-            audio_data=audio,
-            output_path=out,
-            note_duration_ms=note_ms,
-        )
-        if path:
-            print(f"  Video: {path}")
-        else:
-            print("  Video export failed — is ffmpeg on PATH?")
-
-
-def _batch_arpeggio(parts, args, bg_color, note_ms):
-    """Process an 'arpeggio ROOT NAME [--position N] [--view V]' batch line."""
-    from data.arpeggios import get_full_fretboard_arpeggio, get_arpeggio_positions, get_arpeggio_display_name
-
-    if len(parts) < 3:
-        print("  Skipping: arpeggio line needs at least 'arpeggio ROOT NAME'")
-        return
-
-    root = parts[1]
-    rest = parts[2:]
-    position = 1
-    view = "full"
-    name_parts = []
-    i = 0
-    while i < len(rest):
-        if rest[i] in ("--position", "-p") and i + 1 < len(rest):
-            try:
-                position = int(rest[i + 1])
-            except ValueError:
-                pass
-            i += 2
-        elif rest[i] in ("--view", "-v") and i + 1 < len(rest):
-            view = rest[i + 1]
-            i += 2
-        else:
-            name_parts.append(rest[i])
-            i += 1
-
-    arp_name = _normalize_arpeggio_name(" ".join(name_parts))
-    if arp_name not in ARPEGGIO_NAMES:
-        print(f"  Skipping: unknown arpeggio '{arp_name}'")
-        return
-
-    display_name = get_arpeggio_display_name(root, arp_name)
-    safe_name = display_name.replace(" ", "_").replace("/", "-")
-    print(f"  Arpeggio: {display_name} ({view})")
-
-    if view == "box":
-        positions = get_arpeggio_positions(root, arp_name)
-        if position > len(positions):
-            print(f"  Skipping: only {len(positions)} positions available")
-            return
-        pos = positions[position - 1]
-        img = render_scale_box(
-            box_notes=pos["notes"],
-            start_fret=pos["start_fret"],
-            end_fret=pos["end_fret"],
-            scale_name=f"{arp_name} Arpeggio",
-            root_name=root,
-            position_num=position,
-            bg_color=bg_color,
-            width=600, height=800,
-        )
-        view_label = f"pos{position}"
-        diagram_notes = pos["notes"]
-    else:
-        notes = get_full_fretboard_arpeggio(root, arp_name, num_frets=15)
-        img = render_scale_full_fretboard(
-            scale_notes=notes,
-            scale_name=f"{arp_name} Arpeggio",
-            root_name=root,
-            bg_color=bg_color,
-            width=1600, height=500,
-        )
-        view_label = "full"
-        diagram_notes = notes
-
-    if args.png:
-        path = export_diagram(
-            img,
-            Path(args.output) / "arpeggios" / f"{safe_name}_{view_label}_{args.res}_{args.bg}.png",
-            args.res, args.bg,
-        )
-        print(f"  PNG: {path}")
-
-    audio = None
-    if args.audio or getattr(args, "video", False):
-        audio = generate_scale_audio(
-            diagram_notes, tone=args.tone,
-            note_duration_ms=note_ms,
-            ascending=True, descending=True, root_to_root=True,
-        )
-
-    if args.audio and audio is not None:
-        wav_path = export_wav(audio, Path(args.output) / "audio" / f"{safe_name}_{view_label}.wav")
-        if wav_path:
-            print(f"  WAV: {wav_path}")
-
-    if getattr(args, "video", False) and audio is not None:
-        render_kwargs = dict(
-            scale_notes=diagram_notes,
-            scale_name=f"{arp_name} Arpeggio",
-            root_name=root, bg_color=bg_color,
-            width=1600, height=500,
-        )
-        out = Path(args.output) / "videos" / f"{safe_name}_{view_label}.mp4"
-        path = export_scale_video(
-            notes_data=diagram_notes,
-            render_fn=render_scale_full_fretboard,
-            render_kwargs=render_kwargs,
-            audio_data=audio,
-            output_path=out,
-            note_duration_ms=note_ms,
-        )
-        if path:
-            print(f"  Video: {path}")
-        else:
-            print("  Video export failed — is ffmpeg on PATH?")
-
-
 def cmd_batch(args):
-    """Process a batch file of chords/scales/arpeggios.
-
-    Batch file format (one item per line, # = comment):
-        Am7                              # chord
-        scale A pentatonic-minor         # full fretboard scale
-        scale E blues --view box --position 2
-        scale C major --view 3nps --position 1
-        arpeggio A minor                 # full fretboard arpeggio
-        arpeggio C major7 --view box --position 1
-    """
+    """Run the same command handlers as individual exports; failures affect exit status."""
+    import shlex
     batch_file = Path(args.file)
     if not batch_file.exists():
-        print(f"Error: File not found: {batch_file}")
-        return
-
-    lines = batch_file.read_text(encoding="utf-8").strip().split("\n")
-    lines = [l.strip() for l in lines if l.strip() and not l.strip().startswith("#")]
-
-    if not lines:
-        print("Batch file is empty.")
-        return
-
-    print(f"Processing {len(lines)} items from {batch_file.name}...")
-
-    bg_color = config.NAVY_DEEP if args.bg == "navy" else None
-    note_ms = int(60000 / max(getattr(args, "tempo", 100), 20))
-    errors = 0
-
-    for i, line in enumerate(lines):
-        print(f"\n[{i+1}/{len(lines)}] {line}")
-        parts = line.split()
-        keyword = parts[0].lower() if parts else ""
-
+        raise ValueError(f'File not found: {batch_file}')
+    lines = [line.strip() for line in batch_file.read_text(encoding='utf-8').splitlines()
+             if line.strip() and not line.lstrip().startswith('#')]
+    failures = 0
+    parser = build_parser()
+    handlers = {'chord':cmd_chord, 'scale':cmd_scale, 'arpeggio':cmd_arpeggio, 'progression':cmd_progression}
+    for line in lines:
         try:
-            if keyword == "scale":
-                _batch_scale(parts, args, bg_color, note_ms)
-            elif keyword == "arpeggio":
-                _batch_arpeggio(parts, args, bg_color, note_ms)
-            else:
-                # Try chord
-                if not _batch_chord(line, args, bg_color, note_ms):
-                    print(f"  Skipping: could not parse '{line}'")
-                    errors += 1
-        except Exception as exc:
-            print(f"  Error: {exc}")
-            errors += 1
-
-    print(f"\nBatch complete! {len(lines) - errors}/{len(lines)} items processed successfully.")
+            words = shlex.split(line, comments=False)
+            if words[0] not in handlers:
+                words.insert(0, 'chord')
+            common = ['--output',args.output, '--res',args.res, '--bg',args.bg,'--tone',args.tone]
+            if words[0] in ('scale', 'arpeggio'):
+                common.extend(['--tempo', str(args.tempo)])
+            for flag in ('png','audio','video','tab','mp3'):
+                if getattr(args, flag, False):
+                    common.append('--'+flag)
+            parsed = parser.parse_args(words[:1]+common+words[1:])
+            handlers[parsed.command](parsed)
+        except (Exception, SystemExit) as exc:
+            failures += 1
+            print(f'Failed {line}: {exc}')
+    print(f'Batch complete: {len(lines)-failures} succeeded, {failures} failed')
+    if failures:
+        raise ValueError(f'{failures} batch item(s) failed')
 
 
 def build_parser():
@@ -984,7 +648,7 @@ def build_parser():
     return parser
 
 
-def main(args=None):
+def _main(args=None):
     """Main CLI entry point."""
     parser = build_parser()
     parsed = parser.parse_args(args)
@@ -1012,7 +676,17 @@ def main(args=None):
     elif parsed.command == "batch":
         cmd_batch(parsed)
     elif parsed.command == "gui":
-        from gui.app import run
+        from gui.qt_app import run
         run()
     else:
         parser.print_help()
+
+
+def main(args=None):
+    try:
+        return _main(args)
+    except (ValueError, OSError, RuntimeError) as exc:
+        import logging
+        logging.getLogger(__name__).exception('Command failed')
+        print(f'Error: {exc}', file=sys.stderr)
+        raise SystemExit(1) from exc

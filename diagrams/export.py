@@ -39,6 +39,10 @@ def export_diagram(
         target_w, target_h = config.RESOLUTIONS["1080p"]
 
     # Scale diagram to fit within target resolution while maintaining aspect ratio
+    config.validate_size(target_w, target_h)
+    if 'render_spec' in diagram_img.info:
+        from services.documents import render_spec
+        diagram_img = render_spec(diagram_img.info['render_spec'], (target_w, target_h))
     src_w, src_h = diagram_img.size
     scale = min(target_w / src_w, target_h / src_h)
     new_w = int(src_w * scale)
@@ -47,7 +51,9 @@ def export_diagram(
     scaled = diagram_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
     # Create canvas at target resolution
-    if background == "navy":
+    if background == 'theme':
+        canvas = Image.new('RGBA', (target_w,target_h), diagram_img.info.get('background','#12161c'))
+    elif background == "navy":
         canvas = Image.new("RGBA", (target_w, target_h), config.NAVY_DEEP + (255,))
     else:
         canvas = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
@@ -55,7 +61,7 @@ def export_diagram(
     # Center the diagram on the canvas
     offset_x = (target_w - new_w) // 2
     offset_y = (target_h - new_h) // 2
-    canvas.paste(scaled, (offset_x, offset_y), scaled)
+    canvas.alpha_composite(scaled.convert("RGBA"), (offset_x, offset_y))
 
     # Save
     canvas.save(str(output_path), "PNG")
@@ -93,8 +99,9 @@ def batch_export(
     for res in resolutions:
         for bg in backgrounds:
             suffix = f"_{res}_{bg}"
-            filename = f"{base_name}{suffix}.png"
-            path = export_diagram(diagram_img, output_dir / filename, res, bg)
+            from services.storage import safe_filename, unique_path
+            filename = f"{safe_filename(base_name)}{suffix}.png"
+            path = export_diagram(diagram_img, unique_path(output_dir / filename), res, bg)
             saved.append(path)
 
     return saved

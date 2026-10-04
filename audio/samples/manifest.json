@@ -1,0 +1,1129 @@
+{
+  "repository": "https://github.com/nbrosowsky/tonejs-instruments",
+  "commit": "622c2f1c32c8cfce4158ddc3eb26e518ddef37e5",
+  "license": "CC BY 3.0",
+  "changes": "MP3 decoded to PCM16 FLAC; leading digital silence trimmed.",
+  "samples": [
+    {
+      "bank": "guitar-acoustic",
+      "midi": 45,
+      "source": "samples/guitar-acoustic/A2.mp3",
+      "sha256": "9bd4bfcfc92c0aedb3f1ba5466aa4f175d5c57a001277501723864093f931522",
+      "rate": 44100,
+      "frames": 507332
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 57,
+      "source": "samples/guitar-acoustic/A3.mp3",
+      "sha256": "0df522a20714309eda48f527e3c525c772dd33dbf06d51066a76d537dffca5b0",
+      "rate": 44100,
+      "frames": 191663
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 69,
+      "source": "samples/guitar-acoustic/A4.mp3",
+      "sha256": "ae0a13b9c3afaf5908cee796bde2992ac044b04c19f2b5d4772901598eb72c10",
+      "rate": 44100,
+      "frames": 177749
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 46,
+      "source": "samples/guitar-acoustic/As2.mp3",
+      "sha256": "404772efacd85a0c7ff3931d07497f17b531d1f72e54d1952a2589c5396f1991",
+      "rate": 44100,
+      "frames": 490018
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 58,
+      "source": "samples/guitar-acoustic/As3.mp3",
+      "sha256": "fd1a3a6c24f1b5f6f2ebf402003380850ae66c2a43b56245f11b1e93f0a19f19",
+      "rate": 44100,
+      "frames": 191793
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 70,
+      "source": "samples/guitar-acoustic/As4.mp3",
+      "sha256": "7f3ab29163c3c559b142adcf120fbaa4daac6a6fccf693ed74e0498be81dc057",
+      "rate": 44100,
+      "frames": 177722
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 47,
+      "source": "samples/guitar-acoustic/B2.mp3",
+      "sha256": "d49655b04fe0022bdfdffe8d6211479ab60ecb617fe42ee0289962dd87c33ce2",
+      "rate": 44100,
+      "frames": 630510
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 59,
+      "source": "samples/guitar-acoustic/B3.mp3",
+      "sha256": "3377ffd55efb9e3c1b53cd8606fd54233d3feb624c2140f50c42132f3a0adcdb",
+      "rate": 44100,
+      "frames": 220570
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 71,
+      "source": "samples/guitar-acoustic/B4.mp3",
+      "sha256": "1f065bbf8cbe192b13ed935a4b67deb260982df12d73e7561e91b7d795519133",
+      "rate": 44100,
+      "frames": 174087
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 48,
+      "source": "samples/guitar-acoustic/C3.mp3",
+      "sha256": "767ab7a9ebc2853a03d00ed6088fd7689f5a8c395336325eea5fa13f7446d9fd",
+      "rate": 44100,
+      "frames": 608707
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 60,
+      "source": "samples/guitar-acoustic/C4.mp3",
+      "sha256": "638a648d71cb7568e61ed7bb2d18d16cb7eaf355293b48975fd5fa7956984102",
+      "rate": 44100,
+      "frames": 152644
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 72,
+      "source": "samples/guitar-acoustic/C5.mp3",
+      "sha256": "9de0e704a98769220cb5c994296bff4011d5cc6785181edd3bd91c51979c1c51",
+      "rate": 44100,
+      "frames": 150077
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 49,
+      "source": "samples/guitar-acoustic/Cs3.mp3",
+      "sha256": "8179503a7a2ed7c2e10213647ebc3b077806a604b142a918fff1dc075fedf086",
+      "rate": 44100,
+      "frames": 556927
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 61,
+      "source": "samples/guitar-acoustic/Cs4.mp3",
+      "sha256": "e212e96c373614842fadb7a09147ae786189bd3b3899b6f3391e00a0f916e2de",
+      "rate": 44100,
+      "frames": 188319
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 73,
+      "source": "samples/guitar-acoustic/Cs5.mp3",
+      "sha256": "f407f5ad267dc3931794734b9d5837984388d8f8f0bf4fdbd7ddfa496018ef54",
+      "rate": 44100,
+      "frames": 157025
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 38,
+      "source": "samples/guitar-acoustic/D2.mp3",
+      "sha256": "a6961aedcc73eb87304fabf889e064361106e67132f86b3b996818afda54781a",
+      "rate": 44100,
+      "frames": 511944
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 50,
+      "source": "samples/guitar-acoustic/D3.mp3",
+      "sha256": "bc58c760f46d0599c2402cdd97d050ba91913181afe3c81416edec3113bd8a92",
+      "rate": 44100,
+      "frames": 565038
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 62,
+      "source": "samples/guitar-acoustic/D4.mp3",
+      "sha256": "55cb68f0fc07570e2184f218ffeec9d83884f3537ad0708974305e05095aa944",
+      "rate": 44100,
+      "frames": 146709
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 74,
+      "source": "samples/guitar-acoustic/D5.mp3",
+      "sha256": "2c5c6110ea9e087fa2fc8a50985ed7d9041c08715a2d3ecf5f2dcadf807543d3",
+      "rate": 44100,
+      "frames": 141837
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 39,
+      "source": "samples/guitar-acoustic/Ds2.mp3",
+      "sha256": "6965329ccf7300d3409609110cbeb8617447d57555412f0143db0d8c88831b50",
+      "rate": 44100,
+      "frames": 486499
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 51,
+      "source": "samples/guitar-acoustic/Ds3.mp3",
+      "sha256": "4c3a5a5cd214f557d04005385fe9668c9bdfa485144b0354c57a6f1394a097cf",
+      "rate": 44100,
+      "frames": 512927
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 63,
+      "source": "samples/guitar-acoustic/Ds4.mp3",
+      "sha256": "618eb3aa586c73a52d969201d6769989e49c110eeb2fb77a0c07372596f8b2bd",
+      "rate": 44100,
+      "frames": 200898
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 40,
+      "source": "samples/guitar-acoustic/E2.mp3",
+      "sha256": "870bc09f0841b30cf20e227fe4f5a86726f5d8252f6163623d1980e1b95dedc5",
+      "rate": 44100,
+      "frames": 477274
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 52,
+      "source": "samples/guitar-acoustic/E3.mp3",
+      "sha256": "3f09448f5b502f9703f8d38167731d359a638a655421f51ba01d02a6d93729d6",
+      "rate": 44100,
+      "frames": 451165
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 64,
+      "source": "samples/guitar-acoustic/E4.mp3",
+      "sha256": "c58fd1232cdfc712226ff1f874c7017cf08ba712226c2929887afa09908a849b",
+      "rate": 44100,
+      "frames": 199548
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 41,
+      "source": "samples/guitar-acoustic/F2.mp3",
+      "sha256": "6ea574f33c36319b1ac189b495fc94dd0e6294ad2af79266359d8bd0898ff499",
+      "rate": 44100,
+      "frames": 682250
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 53,
+      "source": "samples/guitar-acoustic/F3.mp3",
+      "sha256": "aaa0bf0cd18713e06364b7ba8f2c12e7d418a0876fe6780d7feddaefd422bdb4",
+      "rate": 44100,
+      "frames": 402607
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 65,
+      "source": "samples/guitar-acoustic/F4.mp3",
+      "sha256": "31b830ffb76a08637b628bd01d51093f48bc3d9dabb15fb5ed594fe54fa60a34",
+      "rate": 44100,
+      "frames": 207736
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 42,
+      "source": "samples/guitar-acoustic/Fs2.mp3",
+      "sha256": "46f082178c3cff45e183b64f335b4cce0b38e45cd4ceb1af6943aaec3edcf84a",
+      "rate": 44100,
+      "frames": 657081
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 54,
+      "source": "samples/guitar-acoustic/Fs3.mp3",
+      "sha256": "4c3387af9e586eb88bc499a56dfa23986c06c9df81afbf39bc07aee77efaf0e2",
+      "rate": 44100,
+      "frames": 430130
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 66,
+      "source": "samples/guitar-acoustic/Fs4.mp3",
+      "sha256": "96ce30741477c092c01779a1fa9fccef01a608610f9459079142ec4603fd0913",
+      "rate": 44100,
+      "frames": 207652
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 43,
+      "source": "samples/guitar-acoustic/G2.mp3",
+      "sha256": "b2b68a2e82b8f8ea177be95ee02246bc7172b7fef6ee3409b79a0d6db1775b70",
+      "rate": 44100,
+      "frames": 609793
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 55,
+      "source": "samples/guitar-acoustic/G3.mp3",
+      "sha256": "5a4aa1e089704db47de911482a22425a9dd38a428799434c3a403568c609b206",
+      "rate": 44100,
+      "frames": 251710
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 67,
+      "source": "samples/guitar-acoustic/G4.mp3",
+      "sha256": "772a85534169aa4bb977d8645f0553cf792db17ab8eafca6a46b03e5f29c49f4",
+      "rate": 44100,
+      "frames": 186772
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 44,
+      "source": "samples/guitar-acoustic/Gs2.mp3",
+      "sha256": "c7874036f81aec7323bc5dc39004fd19638665ae668932e1fb4d43bc498392e4",
+      "rate": 44100,
+      "frames": 446294
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 56,
+      "source": "samples/guitar-acoustic/Gs3.mp3",
+      "sha256": "6f42a2c6ff9e7b2f776238e5eeb7e90ef54c957c31f519e8de267d4be92352b0",
+      "rate": 44100,
+      "frames": 220426
+    },
+    {
+      "bank": "guitar-acoustic",
+      "midi": 68,
+      "source": "samples/guitar-acoustic/Gs4.mp3",
+      "sha256": "ee3d945e0727226fdcab80a31f82a3c96a18ff4b972dc0293a390e8a32b47fd1",
+      "rate": 44100,
+      "frames": 190380
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 45,
+      "source": "samples/guitar-electric/A2.mp3",
+      "sha256": "e5577548555bc9656389357f5d3d8494d35380f45dd2811c0eece09c514d612c",
+      "rate": 44100,
+      "frames": 187815
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 57,
+      "source": "samples/guitar-electric/A3.mp3",
+      "sha256": "8f804b524e7dc4d941d96c2f93debe8d289857702f043d09297c763bd9297c38",
+      "rate": 44100,
+      "frames": 187834
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 69,
+      "source": "samples/guitar-electric/A4.mp3",
+      "sha256": "4d4e0eb102f3ecae8ead12b6b1c965f5f0400fe1b1b2bce54c5cd6795c88a295",
+      "rate": 44100,
+      "frames": 187910
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 81,
+      "source": "samples/guitar-electric/A5.mp3",
+      "sha256": "51ab1f202c77be16ba855fd46aeb00d44b44ea55b99cc93ad6ef96beedf4dae6",
+      "rate": 44100,
+      "frames": 187912
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 48,
+      "source": "samples/guitar-electric/C3.mp3",
+      "sha256": "d10acde9e94db863096888a2ea765cf53a2744ed1892e1898696d50b77f5380d",
+      "rate": 44100,
+      "frames": 187810
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 60,
+      "source": "samples/guitar-electric/C4.mp3",
+      "sha256": "a722fd28613fb6db127456567a05248c448e3c2f378ab9e84966cd76ba043000",
+      "rate": 44100,
+      "frames": 187816
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 72,
+      "source": "samples/guitar-electric/C5.mp3",
+      "sha256": "d74ad06517efc53ca1716c07cf710a1521e474b96fbd591bfc8425daa021ead1",
+      "rate": 44100,
+      "frames": 187906
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 84,
+      "source": "samples/guitar-electric/C6.mp3",
+      "sha256": "da72452edd420b6bdd98155a76036c4b5ceb6cea2e76b896fd15c62f77f3e28e",
+      "rate": 44100,
+      "frames": 187912
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 37,
+      "source": "samples/guitar-electric/Cs2.mp3",
+      "sha256": "63319682480ff97b207db6b2450b3173586aea0f31e8ad3eef764393e8bc9e27",
+      "rate": 44100,
+      "frames": 187813
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 51,
+      "source": "samples/guitar-electric/Ds3.mp3",
+      "sha256": "45481a7f32304371fab558a6180bed63a0c37831a050f55b99ddd270f2be84b5",
+      "rate": 44100,
+      "frames": 187813
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 63,
+      "source": "samples/guitar-electric/Ds4.mp3",
+      "sha256": "6e903965dd9b181f93b1c286fa881a56ec55b29ffdfd7b867487e7923650ba3a",
+      "rate": 44100,
+      "frames": 187904
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 75,
+      "source": "samples/guitar-electric/Ds5.mp3",
+      "sha256": "88b79274a961a9dedea25f602e63579859119f2084db9d5f9da3081984651bc3",
+      "rate": 44100,
+      "frames": 187928
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 40,
+      "source": "samples/guitar-electric/E2.mp3",
+      "sha256": "2ea4fc57040c130e2b625dfac613517936a8923b2aa9abaa068bc2bee11e1dae",
+      "rate": 44100,
+      "frames": 187814
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 42,
+      "source": "samples/guitar-electric/Fs2.mp3",
+      "sha256": "5908a5ecd3f337bf5d25ba39cec0429f64e1f1591ac24fddb0d720d2ec0e4ff2",
+      "rate": 44100,
+      "frames": 187815
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 54,
+      "source": "samples/guitar-electric/Fs3.mp3",
+      "sha256": "b7dae567cf6aa3273ac74dee0cf051c98783fb759ff04d4b3c2d3b26951402c6",
+      "rate": 44100,
+      "frames": 187820
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 66,
+      "source": "samples/guitar-electric/Fs4.mp3",
+      "sha256": "d62ce373bbf8db6f89980fecd09a138e3df28cddacdd9c8f1ee5b6b6bdb48760",
+      "rate": 44100,
+      "frames": 187960
+    },
+    {
+      "bank": "guitar-electric",
+      "midi": 78,
+      "source": "samples/guitar-electric/Fs5.mp3",
+      "sha256": "7bb9a0a6a40df4e93baf7f3ef4cb8fbba9808f9de4e7dc79017d2ed47895b19e",
+      "rate": 44100,
+      "frames": 187926
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 45,
+      "source": "samples/guitar-nylon/A2.mp3",
+      "sha256": "5ecea0524d05f525913dad8135ef1b2f0d479bc96e7380ba739f82fdc7589c35",
+      "rate": 44100,
+      "frames": 231589
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 57,
+      "source": "samples/guitar-nylon/A3.mp3",
+      "sha256": "dcfe3e57ac4b488de38e411e5ef6aa404759743aba13ad1ed6abf9c53c223d1d",
+      "rate": 44100,
+      "frames": 139561
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 69,
+      "source": "samples/guitar-nylon/A4.mp3",
+      "sha256": "38c2c54f408fc36d9d7832040a0bd3c2c059c496f7dd16613fa4f28f89c36549",
+      "rate": 44100,
+      "frames": 139501
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 81,
+      "source": "samples/guitar-nylon/A5.mp3",
+      "sha256": "a36f09afc15ac19dacb4951388b1612929fe946d3edeec4c944095f62963bbc5",
+      "rate": 44100,
+      "frames": 70468
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 82,
+      "source": "samples/guitar-nylon/As5.mp3",
+      "sha256": "d44f60c3a7b2786a8360a8b21557001d24769cb65bf7906e128dec3f38f4af3f",
+      "rate": 44100,
+      "frames": 70465
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 35,
+      "source": "samples/guitar-nylon/B1.mp3",
+      "sha256": "16ee4066ec130b6616236571301f01d65da18c25b779c2d74612b0719f8b7dc5",
+      "rate": 44100,
+      "frames": 231591
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 47,
+      "source": "samples/guitar-nylon/B2.mp3",
+      "sha256": "51600765809e909f32f1e714ecc83c45553acb72268ff01b48ddedcba807d745",
+      "rate": 44100,
+      "frames": 231590
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 59,
+      "source": "samples/guitar-nylon/B3.mp3",
+      "sha256": "b5cb1f4a91fd2c3ac7fa577dd0651039101e6c0564b6a807f85a33fc4878480c",
+      "rate": 44100,
+      "frames": 139430
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 71,
+      "source": "samples/guitar-nylon/B4.mp3",
+      "sha256": "bdb5e9354837e0ed54547d4efce8178de26a213db67797a4ce6d363ee99a2bca",
+      "rate": 44100,
+      "frames": 139535
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 49,
+      "source": "samples/guitar-nylon/Cs3.mp3",
+      "sha256": "a74eab1701521ab81b2bfb05b46c9093b28d7dc39772991e6a469b5e58dc6bdb",
+      "rate": 44100,
+      "frames": 231596
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 61,
+      "source": "samples/guitar-nylon/Cs4.mp3",
+      "sha256": "39cbf190a1c72ae97f50a3239233537a86279ae0266d0d380570fb62279fb001",
+      "rate": 44100,
+      "frames": 139542
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 73,
+      "source": "samples/guitar-nylon/Cs5.mp3",
+      "sha256": "10b556a4654ef83717a89ac6a0424622c979738992314f2603ce2492d36a2bcb",
+      "rate": 44100,
+      "frames": 70449
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 38,
+      "source": "samples/guitar-nylon/D2.mp3",
+      "sha256": "7e58c67403899b54255114418d145714b8c1959beaab96075bc3893fe12fc050",
+      "rate": 44100,
+      "frames": 231598
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 50,
+      "source": "samples/guitar-nylon/D3.mp3",
+      "sha256": "f256e44d25ff7c0c4329119190b6bf4449d7caef242b22f54d0c7e4aa7e8464a",
+      "rate": 44100,
+      "frames": 231633
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 75,
+      "source": "samples/guitar-nylon/D5.mp3",
+      "sha256": "ad33324ccef1ae9bc45f071ce632e69548696f3e10954719a1a1d7ad27b0f868",
+      "rate": 44100,
+      "frames": 80769,
+      "pitch_note": "Upstream D5 file is actually D#5; corrected mapping after pitch measurement."
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 63,
+      "source": "samples/guitar-nylon/Ds4.mp3",
+      "sha256": "f05f20a9617039d6c6a9b5e44613b67eb50e3998b0a052858f23bb3e0d25de90",
+      "rate": 44100,
+      "frames": 139508
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 40,
+      "source": "samples/guitar-nylon/E2.mp3",
+      "sha256": "ca96a48926bc268f4cdb7a48f1e297266de46770ea4406f92040ed427f36bc79",
+      "rate": 44100,
+      "frames": 231591
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 52,
+      "source": "samples/guitar-nylon/E3.mp3",
+      "sha256": "0fba09e43cce5cfeff44e986dff26d16f3b7c1f15a943e5ba7a3c473dfa8c816",
+      "rate": 44100,
+      "frames": 185527
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 64,
+      "source": "samples/guitar-nylon/E4.mp3",
+      "sha256": "33095ae9c2ac58f64f6416acc3050ffa2878ddc3a436c4dd1b023664ea5917ba",
+      "rate": 44100,
+      "frames": 139606
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 76,
+      "source": "samples/guitar-nylon/E5.mp3",
+      "sha256": "5248d7d66e6e8c0af27a1b2c162db771b31450a673229a376a7741d71b2c8154",
+      "rate": 44100,
+      "frames": 65717
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 42,
+      "source": "samples/guitar-nylon/Fs2.mp3",
+      "sha256": "1d1192a2c4a795ee6bd6664620691fd5b748903cda78038520c70aa985df0c44",
+      "rate": 44100,
+      "frames": 185508
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 54,
+      "source": "samples/guitar-nylon/Fs3.mp3",
+      "sha256": "fbdc887037179353f27ecedd278d8537eb9eac75ab792074c3eafb7cad0e5f39",
+      "rate": 44100,
+      "frames": 231591
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 66,
+      "source": "samples/guitar-nylon/Fs4.mp3",
+      "sha256": "1db81ccd97714baeea2dc3d6778ca1fed9b06d56a94e44b6314ec7f9678011df",
+      "rate": 44100,
+      "frames": 139593
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 78,
+      "source": "samples/guitar-nylon/Fs5.mp3",
+      "sha256": "9a05c4f70cda4ee8f2100bd2e8370cb4d510483f23e5fc02ab58bd02a5228959",
+      "rate": 44100,
+      "frames": 70443
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 55,
+      "source": "samples/guitar-nylon/G3.mp3",
+      "sha256": "8aa67ea467e510d44380ee6acfb31a437115e1fc14a49330606b27c73c8f5488",
+      "rate": 44100,
+      "frames": 139417
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 79,
+      "source": "samples/guitar-nylon/G5.mp3",
+      "sha256": "78142b157cc37d0324b4b3c2e1e892bf04f9901209a128ae4278bdbc357643c3",
+      "rate": 44100,
+      "frames": 70413
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 44,
+      "source": "samples/guitar-nylon/Gs2.mp3",
+      "sha256": "98732fb488afebc139a93e27496ed76758dd944c68110ddeecfd3d7677920633",
+      "rate": 44100,
+      "frames": 231591
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 68,
+      "source": "samples/guitar-nylon/Gs4.mp3",
+      "sha256": "11d076d4803d7bc51be1fb04971976fd7cb2b1dfa08493536022a35708c0b3dc",
+      "rate": 44100,
+      "frames": 70310
+    },
+    {
+      "bank": "guitar-nylon",
+      "midi": 80,
+      "source": "samples/guitar-nylon/Gs5.mp3",
+      "sha256": "5eedcb9a94cda4ffc68542392a6e96f8700ba1e2c8973e03abac8b5907b0c679",
+      "rate": 44100,
+      "frames": 70492
+    },
+    {
+      "bank": "harp",
+      "midi": 45,
+      "source": "samples/harp/A2.mp3",
+      "sha256": "904870dadb5f839c909a8884e3448a99dd62dbef2902d6a295f5063fc48911ed",
+      "rate": 44100,
+      "frames": 503463
+    },
+    {
+      "bank": "harp",
+      "midi": 69,
+      "source": "samples/harp/A4.mp3",
+      "sha256": "8d4d87ed8963b85aa0d2af5faaadbe9e2339874a7181a51b8bcbf4da956c0388",
+      "rate": 44100,
+      "frames": 537380
+    },
+    {
+      "bank": "harp",
+      "midi": 93,
+      "source": "samples/harp/A6.mp3",
+      "sha256": "a387a3eb05524ca0977ee14dd1dfc5a9ee08e3c04e7384411392779a9d262a97",
+      "rate": 44100,
+      "frames": 160845
+    },
+    {
+      "bank": "harp",
+      "midi": 35,
+      "source": "samples/harp/B1.mp3",
+      "sha256": "c5e1acb099e92b15a225261b8e3eb7de876794670fab69a593346c58e8133407",
+      "rate": 44100,
+      "frames": 572579
+    },
+    {
+      "bank": "harp",
+      "midi": 59,
+      "source": "samples/harp/B3.mp3",
+      "sha256": "def2ee1e12d06851b7672d45d8a2776c43227b46351fcde5d57577a49be9ca7e",
+      "rate": 44100,
+      "frames": 496393
+    },
+    {
+      "bank": "harp",
+      "midi": 83,
+      "source": "samples/harp/B5.mp3",
+      "sha256": "5ded5c2290d41ae1308409028921da2e9e5c20c58a82d2c4f04ddfacef88c95d",
+      "rate": 44100,
+      "frames": 196866
+    },
+    {
+      "bank": "harp",
+      "midi": 95,
+      "source": "samples/harp/B6.mp3",
+      "sha256": "03d4c5ee2255e788dbb83d1197513e2dfb9cfd21034e847c2d655bd6639a4d80",
+      "rate": 44100,
+      "frames": 123203
+    },
+    {
+      "bank": "harp",
+      "midi": 48,
+      "source": "samples/harp/C3.mp3",
+      "sha256": "bb88cc43d3f9b83797eee0a4c1c95894ea6f3f61af4c54fb3e8a0161a72af543",
+      "rate": 44100,
+      "frames": 397477
+    },
+    {
+      "bank": "harp",
+      "midi": 72,
+      "source": "samples/harp/C5.mp3",
+      "sha256": "8fd96c6add4cfe46776a72f3e2bb5fd0d506af0cc11894fb463ed8b803fd7569",
+      "rate": 44100,
+      "frames": 310305
+    },
+    {
+      "bank": "harp",
+      "midi": 38,
+      "source": "samples/harp/D2.mp3",
+      "sha256": "2eced25005147ef55de2b4082b27e5d5568c4e96546a2c552eaa79f7a5d398cb",
+      "rate": 44100,
+      "frames": 436638
+    },
+    {
+      "bank": "harp",
+      "midi": 62,
+      "source": "samples/harp/D4.mp3",
+      "sha256": "c4c5c8130273a5a1db2cb1decc7b0b905393d981496b965a99b3b3ed968137a0",
+      "rate": 44100,
+      "frames": 482072
+    },
+    {
+      "bank": "harp",
+      "midi": 86,
+      "source": "samples/harp/D6.mp3",
+      "sha256": "345587bef05b9a33bd4b36f4283601c18821fe32ee7d7acae1039b2236e2476d",
+      "rate": 44100,
+      "frames": 173680
+    },
+    {
+      "bank": "harp",
+      "midi": 52,
+      "source": "samples/harp/E3.mp3",
+      "sha256": "11884ca2177de527dce5c4648f4ef92503c1fd10aff2724288adee3f07f659c8",
+      "rate": 44100,
+      "frames": 617482
+    },
+    {
+      "bank": "harp",
+      "midi": 76,
+      "source": "samples/harp/E5.mp3",
+      "sha256": "27ea00aad779acd568d929b185e5dbd4679d9e53a47be01b945ac3ab9ea7cc0e",
+      "rate": 44100,
+      "frames": 294140
+    },
+    {
+      "bank": "harp",
+      "midi": 41,
+      "source": "samples/harp/F2.mp3",
+      "sha256": "9fd97009e5b90cea46851865afc361d4d63cbdab61d66d6fe1c7247d364a43ff",
+      "rate": 44100,
+      "frames": 773030
+    },
+    {
+      "bank": "harp",
+      "midi": 65,
+      "source": "samples/harp/F4.mp3",
+      "sha256": "1e17fc45cfb577f06a58577ca4c4f4b7e658066b1551d7c3dbffb85b1e4b99fb",
+      "rate": 44100,
+      "frames": 480185
+    },
+    {
+      "bank": "harp",
+      "midi": 89,
+      "source": "samples/harp/F6.mp3",
+      "sha256": "52192fb786096687caed1466c957f635431c2d802954edcdd0e788c9301c614f",
+      "rate": 44100,
+      "frames": 104866
+    },
+    {
+      "bank": "harp",
+      "midi": 55,
+      "source": "samples/harp/G3.mp3",
+      "sha256": "eb6af58047abd4482631029973d53820ffcccf4de35e57d1f4969561ebf33790",
+      "rate": 44100,
+      "frames": 452813
+    },
+    {
+      "bank": "harp",
+      "midi": 79,
+      "source": "samples/harp/G5.mp3",
+      "sha256": "1c78cdb14a85ed2205aa725345e13f9f31bd41ee3752e60a89f08482bac9563a",
+      "rate": 44100,
+      "frames": 263755
+    },
+    {
+      "bank": "organ",
+      "midi": 45,
+      "source": "samples/organ/A2.mp3",
+      "sha256": "7579866b40ab806c35c90992d8e6020b093c760fb8d8a98c0d183e94c982f157",
+      "rate": 44100,
+      "frames": 541191
+    },
+    {
+      "bank": "organ",
+      "midi": 57,
+      "source": "samples/organ/A3.mp3",
+      "sha256": "505283472017879d1418579f3eaddffa7b1c6c5ee495af3464500825e8683bce",
+      "rate": 44100,
+      "frames": 546913
+    },
+    {
+      "bank": "organ",
+      "midi": 69,
+      "source": "samples/organ/A4.mp3",
+      "sha256": "14187f160ffab018bbfdfecb61073bbdef002af527514338882e58cb3288f511",
+      "rate": 44100,
+      "frames": 533054
+    },
+    {
+      "bank": "organ",
+      "midi": 81,
+      "source": "samples/organ/A5.mp3",
+      "sha256": "c6f592d19bf7bbb6413b11f0b190cf7ea6618dd3b836cb0111364b26621b2eea",
+      "rate": 44100,
+      "frames": 536755
+    },
+    {
+      "bank": "organ",
+      "midi": 36,
+      "source": "samples/organ/C2.mp3",
+      "sha256": "c97161859a1b27a5c3840ac8eaebacc4db1b609cdf3bbe2454ad7612813225d4",
+      "rate": 44100,
+      "frames": 542144
+    },
+    {
+      "bank": "organ",
+      "midi": 48,
+      "source": "samples/organ/C3.mp3",
+      "sha256": "b782bc183dc5a064caf0c9c69073eee002a3fbd594f7bc9df78bf9a318ac1931",
+      "rate": 44100,
+      "frames": 545512
+    },
+    {
+      "bank": "organ",
+      "midi": 60,
+      "source": "samples/organ/C4.mp3",
+      "sha256": "af2f4c0863822dfcc70c8c7d850ac89acd76b216e36a690cb6feb43503f889a9",
+      "rate": 44100,
+      "frames": 546756
+    },
+    {
+      "bank": "organ",
+      "midi": 72,
+      "source": "samples/organ/C5.mp3",
+      "sha256": "7af9b9abaa7b00787e18a47cc7f7cdf7a82803dd1097282c72bbce19fa00bbbf",
+      "rate": 44100,
+      "frames": 534229
+    },
+    {
+      "bank": "organ",
+      "midi": 84,
+      "source": "samples/organ/C6.mp3",
+      "sha256": "755ea2d3a9dd9c4c99d2bf066d6e7aff5ac20716e0e6c777747b6441ebda5881",
+      "rate": 44100,
+      "frames": 525118
+    },
+    {
+      "bank": "organ",
+      "midi": 39,
+      "source": "samples/organ/Ds2.mp3",
+      "sha256": "049afe51f2a95e2b7da546cd352e03724643a71475a3bc347ca707344eb02dd7",
+      "rate": 44100,
+      "frames": 547814
+    },
+    {
+      "bank": "organ",
+      "midi": 51,
+      "source": "samples/organ/Ds3.mp3",
+      "sha256": "935657e0cefa52f587d4d0050e5b2038225b3f5fa1f2554316dd0f3a487cf0a7",
+      "rate": 44100,
+      "frames": 540079
+    },
+    {
+      "bank": "organ",
+      "midi": 63,
+      "source": "samples/organ/Ds4.mp3",
+      "sha256": "1a5507065aec74117e65a2dc7148faf332de90d4aa2a3e389ce4c3c552e964ea",
+      "rate": 44100,
+      "frames": 535192
+    },
+    {
+      "bank": "organ",
+      "midi": 75,
+      "source": "samples/organ/Ds5.mp3",
+      "sha256": "5427fd56151f01bbbfd0803ac731d4bd84566d20e1d1acd8bff89ec632d021b7",
+      "rate": 44100,
+      "frames": 529543
+    },
+    {
+      "bank": "organ",
+      "midi": 42,
+      "source": "samples/organ/Fs2.mp3",
+      "sha256": "e1b1640d05db69dae887398f89e30e64d58585404885335f3ec6481fac470a73",
+      "rate": 44100,
+      "frames": 549131
+    },
+    {
+      "bank": "organ",
+      "midi": 54,
+      "source": "samples/organ/Fs3.mp3",
+      "sha256": "b2f83936c45755a66b7e30b887733641fc6c5f9584b5c23d4322478ffdb303c2",
+      "rate": 44100,
+      "frames": 542614
+    },
+    {
+      "bank": "organ",
+      "midi": 66,
+      "source": "samples/organ/Fs4.mp3",
+      "sha256": "9aa112787989480361cce20eed4a00816fa27b828fd1e37f5d384cf18ae508c9",
+      "rate": 44100,
+      "frames": 530731
+    },
+    {
+      "bank": "organ",
+      "midi": 78,
+      "source": "samples/organ/Fs5.mp3",
+      "sha256": "eb627f809019f9bff1cf40baeda3bbe4fedbd167cd9559b267933f6316ac362a",
+      "rate": 44100,
+      "frames": 530603
+    },
+    {
+      "bank": "piano",
+      "midi": 45,
+      "source": "samples/piano/A2.mp3",
+      "sha256": "c9e0a6ef77381bee35b8f48b8abd4012e3e2ab00ecd3cdfd7d2d0f453c9d6600",
+      "rate": 44100,
+      "frames": 422810
+    },
+    {
+      "bank": "piano",
+      "midi": 57,
+      "source": "samples/piano/A3.mp3",
+      "sha256": "99c77274a910ee782ed1c36615b63e4fa69e0f1f1411bd7bbae78ce67a9352f1",
+      "rate": 44100,
+      "frames": 367495
+    },
+    {
+      "bank": "piano",
+      "midi": 69,
+      "source": "samples/piano/A4.mp3",
+      "sha256": "7b7b91d9616b919d664b9f7278e146aeea224e0fc1e196057840d49977755cdc",
+      "rate": 44100,
+      "frames": 291495
+    },
+    {
+      "bank": "piano",
+      "midi": 81,
+      "source": "samples/piano/A5.mp3",
+      "sha256": "5bb372a126b66ed66449de55f1129e5c2021f4d5eec54599dbd77215004260e1",
+      "rate": 44100,
+      "frames": 224736
+    },
+    {
+      "bank": "piano",
+      "midi": 93,
+      "source": "samples/piano/A6.mp3",
+      "sha256": "b5379c37261d513219bca703352708002cc5d7223bb61e3bdfa6017e84941f23",
+      "rate": 44100,
+      "frames": 127906
+    },
+    {
+      "bank": "piano",
+      "midi": 36,
+      "source": "samples/piano/C2.mp3",
+      "sha256": "e08613dca368c4d5292adb516b24287b6074fc73ba725fecd3d52cf521903330",
+      "rate": 44100,
+      "frames": 789151
+    },
+    {
+      "bank": "piano",
+      "midi": 48,
+      "source": "samples/piano/C3.mp3",
+      "sha256": "7cfca866577cb06dd112290b4157bc37e352bfc91c7a11f64268654d315a4ba2",
+      "rate": 44100,
+      "frames": 481559
+    },
+    {
+      "bank": "piano",
+      "midi": 60,
+      "source": "samples/piano/C4.mp3",
+      "sha256": "99134a4c7f4bae34676534e234492c3a085788c38dd5d7206b4c3791b8ee2556",
+      "rate": 44100,
+      "frames": 438951
+    },
+    {
+      "bank": "piano",
+      "midi": 72,
+      "source": "samples/piano/C5.mp3",
+      "sha256": "fbe0dc09b768fd33e36066d9849013c781dedf15db6d850fda9e79b7add03055",
+      "rate": 44100,
+      "frames": 324903
+    },
+    {
+      "bank": "piano",
+      "midi": 84,
+      "source": "samples/piano/C6.mp3",
+      "sha256": "d097ebdcd4ab8a9a88bb8ace9169118e44b5b33af19fe713279bcffa78e8a75b",
+      "rate": 44100,
+      "frames": 183207
+    },
+    {
+      "bank": "piano",
+      "midi": 96,
+      "source": "samples/piano/C7.mp3",
+      "sha256": "01956ecb27db5302844445a463daa0ce1decdef3582d7bc523533e9b4c06b52a",
+      "rate": 44100,
+      "frames": 107172
+    },
+    {
+      "bank": "piano",
+      "midi": 39,
+      "source": "samples/piano/Ds2.mp3",
+      "sha256": "061c7d43bffb52557cc0d62f18f318ae6184839be020fb7d135e8fa8a5970444",
+      "rate": 44100,
+      "frames": 687783
+    },
+    {
+      "bank": "piano",
+      "midi": 51,
+      "source": "samples/piano/Ds3.mp3",
+      "sha256": "10de431641925cc9ad5b3d54edb3b71ead7ffc5470d755c7a2ba63042b00dd9b",
+      "rate": 44100,
+      "frames": 342212
+    },
+    {
+      "bank": "piano",
+      "midi": 63,
+      "source": "samples/piano/Ds4.mp3",
+      "sha256": "21e47063b12e8385031e0e3f5e18beaf9a1d50246857d29412adb71f5f8baf1c",
+      "rate": 44100,
+      "frames": 384806
+    },
+    {
+      "bank": "piano",
+      "midi": 75,
+      "source": "samples/piano/Ds5.mp3",
+      "sha256": "db8fa7ad372bca11a1ee8307e8b7a981ff5ba13d922ef1f73d89accb0b0fc31f",
+      "rate": 44100,
+      "frames": 248871
+    },
+    {
+      "bank": "piano",
+      "midi": 87,
+      "source": "samples/piano/Ds6.mp3",
+      "sha256": "846d1b3f6a01416e9c2182f543cf0e3941d1d0d5bf0e634ed6e69a416f563bb0",
+      "rate": 44100,
+      "frames": 197024
+    },
+    {
+      "bank": "piano",
+      "midi": 42,
+      "source": "samples/piano/Fs2.mp3",
+      "sha256": "e491ad1b9e6bd2a949f6cd0cd9fdd510cf5f2ba59079c475cfe3bbfde7502546",
+      "rate": 44100,
+      "frames": 569127
+    },
+    {
+      "bank": "piano",
+      "midi": 54,
+      "source": "samples/piano/Fs3.mp3",
+      "sha256": "4120eb34c635cc6c4638dc8eae0e251458dd2f634b528fdb3324e716d26ad1d5",
+      "rate": 44100,
+      "frames": 428583
+    },
+    {
+      "bank": "piano",
+      "midi": 66,
+      "source": "samples/piano/Fs4.mp3",
+      "sha256": "40bf815603629c620e8f4db7da8b89b09abeccacba2748ca70b7b5389636fb46",
+      "rate": 44100,
+      "frames": 296098
+    },
+    {
+      "bank": "piano",
+      "midi": 78,
+      "source": "samples/piano/Fs5.mp3",
+      "sha256": "aee382bbaa0af3c7083f181cdc4555ad70a84dfb72c1f208fc675e824322b800",
+      "rate": 44100,
+      "frames": 309927
+    },
+    {
+      "bank": "piano",
+      "midi": 90,
+      "source": "samples/piano/Fs6.mp3",
+      "sha256": "45dda96f39a91763e989aa7ec2fd8769d384da9fb0263d96ce33f7e8d81a207c",
+      "rate": 44100,
+      "frames": 109471
+    }
+  ]
+}

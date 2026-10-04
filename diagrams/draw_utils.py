@@ -13,6 +13,7 @@ Provides:
   - Gold-style watermark
 """
 
+from functools import lru_cache
 import numpy as np
 from PIL import Image, ImageDraw
 import config
@@ -21,14 +22,20 @@ import config
 # ── Background ─────────────────────────────────────────────────────────────
 
 def apply_background_gradient(img):
+    return _background_gradient(img.size).copy()
+
+
+@lru_cache(maxsize=4)
+def _background_gradient(size):
     """
     Replace image pixels with a radial gradient (center → edge) plus subtle noise.
     Returns a new RGBA Image.
     """
-    w, h = img.size
+    w, h = size
     cx, cy = w / 2, h / 2
 
-    ys, xs = np.mgrid[0:h, 0:w]
+    ys = np.arange(h, dtype=np.float32)[:, None]
+    xs = np.arange(w, dtype=np.float32)[None, :]
     dist = np.sqrt(((xs - cx) / cx) ** 2 + ((ys - cy) / cy) ** 2)
     dist = np.clip(dist, 0.0, 1.0)
 
